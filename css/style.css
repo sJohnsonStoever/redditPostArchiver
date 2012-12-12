@@ -1,0 +1,48 @@
+/*
+Stylesheet for reddit Post Archiver
+
+
+
+*/
+
+body {
+    font-family: verdana, Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    background-color: #e6eaed;
+}
+div.title {
+    font-size: 20px;
+    padding-left: 30px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+div.title em {
+    font-size: 12px;
+    color: #666;
+}
+div.post {
+    background-color: #fff;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #000;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+div.comment-lvl1 {
+    background-color: #fff;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #000;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    border-radius: 15px;
+    margin-bottom: 5px;
+    margin-left: 20px;
+}
+
