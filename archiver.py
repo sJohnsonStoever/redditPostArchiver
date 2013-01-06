@@ -12,8 +12,8 @@ Customization Configuration
 
 """
 postID='15zmjl'
-outputFilePath='saved/' + postID + '.html'
-pathToCSS='../css/style.css'
+outputFilePath='./' + postID + '.html'
+pathToCSS='css/style.css'
 
 """
 Reddit Post Archiver
