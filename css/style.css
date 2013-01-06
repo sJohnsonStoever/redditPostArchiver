@@ -8,19 +8,52 @@ Stylesheet for reddit Post Archiver
 body {
     font-family: verdana, Arial, Helvetica, sans-serif;
     font-size: 12px;
-    background-color: #e6eaed;
+    font-weight: 400;
+    background-color: #fff;
+    margin: 0px 0px 0px 0px;
 }
 div.title {
+    background: #e6eaed;
     font-size: 20px;
-    padding-left: 30px;
-    margin-top: 5px;
-    margin-bottom: 5px;
+    margin-top: 0px;
+    margin-bottom: 15px;
+    padding-left: 35px;
+    padding-top:10px;
+    padding-bottom: 15px;
 }
 div.title em {
+    font-size: 11px;
+    color: #666;
+}
+div.title strong {
     font-size: 12px;
+}
+div.title a#postlink {
+    color: #00F;
+}
+div.title a#postlink:visited {
+    color: #00F;
+}
+div.title a#userlink {
+    color: #000;
+}
+div.title a#userlink:visited {
+    color: #000;
+}
+div.title a#selflink {
+    color: #666;
+}
+div.title a#selfLink:visited {
+    color: #666;
+}
+div.title a#postpermalink {
+    color: #666;
+}
+div.title a#postpermalink:visited {
     color: #666;
 }
 div.post {
+    font-size: 12px;
     background-color: #fff;
     border-width: 1px;
     border-style: solid;
@@ -29,10 +62,11 @@ div.post {
     padding-right: 15px;
     padding-top: 0px;
     padding-bottom: 0px;
-    border-radius: 15px;
-    margin-bottom: 20px;
+    border-radius: 10px;
+    margin-bottom: 0px;
+    margin-left: -15px;
 }
-div.comment-lvl1 {
+div.comment {
     background-color: #fff;
     border-width: 1px;
     border-style: solid;
@@ -41,8 +75,50 @@ div.comment-lvl1 {
     padding-right: 15px;
     padding-top: 0px;
     padding-bottom: 0px;
-    border-radius: 15px;
-    margin-bottom: 5px;
+    border-radius: 5px;
+    margin-bottom: 1px;
+    margin-top: 1px;
     margin-left: 20px;
 }
-
+div.commentinfo {
+    margin-top: 5px;
+}
+div.commentinfo em {
+    margin-right: 15px;
+    font-size: 10px;
+}
+div.commentinfo a {
+    font-size: 12px;
+    color: #000080;
+    font-weight: 800;
+    margin-right: 10px;
+    text-decoration: none;
+}
+div.commentinfo a:hover {
+    color: #000080;
+    font-weight: 800;
+    margin-right: 10px;
+    text-decoration: underline;
+}
+div#footer {
+    text-align:center;
+    margin-bottom: 35px;
+}
+hr#footerhr {
+    width: 250px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border-top: 1px dotted #000;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+}
+pre {
+    margin-left: 25px;
+}
+blockquote {
+    margin-left: 0px;
+    padding-left: 15px;
+    background: #f6f6f6;
+    border-left: 3px solid #00f;
+}
