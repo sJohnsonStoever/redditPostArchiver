@@ -7,6 +7,10 @@
 
 ***Dependencies:** [PRAW](https://github.com/praw-dev/praw), [snudown](https://github.com/reddit/snudown), Python 2.7 (Python 3.x not supported since snudown doesn't work in 3.x)
 
+## Quick Start ##
+
+Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply change the post id on line 14 of the script. 
+
 ## Motivation ##
 
 If you're addicted to reddit, then it's pretty likely stemming from the fact that it changed the way you live your life (or a part of it at least). Contained within their databases lies a huge treasure trove of information: academic, creative, informative, transformative, etc. It's true that a huge amount of the information that is accessible through reddit is through links, but the discussions on those links are often the best part about reddit. And then think about all the .self posts on all of reddit.
