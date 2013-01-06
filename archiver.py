@@ -96,7 +96,7 @@ def parsePost(postObject):
         htmlFile.write(postObject.url)
         htmlFile.write('</p>\n</div>\n')
         htmlFile.write('</div>\n')
-        for comment in postObject._comments:
+        for comment in postObject.all_comments:
             parseComment(comment)
         htmlFile.write('<hr id="footerhr">\n')
         htmlFile.write('<div id="footer"><em>Archived on ')
