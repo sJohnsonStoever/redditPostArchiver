@@ -109,9 +109,11 @@ def parseComment(redditComment, isRoot=True):
     else:
         htmlFile.write('<div class="comment" style="margin-bottom:10px;margin-left:0px;">\n')
     htmlFile.write('<div class="commentinfo">\n')
-    htmlFile.write('<a href="')
-    htmlFile.write(redditComment.author._url)
-    htmlFile.write('">' + redditComment.author.name + '</a> <em>')
+    try:
+        htmlFile.write('<a href="' + redditComment.author._url)
+        htmlFile.write('">' + redditComment.author.name + '</a> <em>')
+    except AttributeError:
+        htmlFile.write('<strong>[Deleted]</strong> <em>')
     htmlFile.write(str(redditComment.ups - redditComment.downs))
     htmlFile.write(' Points </em><em>')
     htmlFile.write('Posted at ')
