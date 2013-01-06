@@ -105,9 +105,11 @@ def parsePost(postObject):
         htmlFile.write('\n\n</body>\n</html>\n')
 def parseComment(redditComment, isRoot=True):
     if isRoot:
-        htmlFile.write('<div class="comment">\n')
+        htmlFile.write('<div id="' + str(redditComment.id))
+        htmlFile.write('" class="comment">\n')
     else:
-        htmlFile.write('<div class="comment" style="margin-bottom:10px;margin-left:0px;">\n')
+        htmlFile.write('<div id="' + str(redditComment.id)) 
+        htmlFile.write('" class="comment" style="margin-bottom:10px;margin-left:0px;">\n')
     htmlFile.write('<div class="commentinfo">\n')
     try:
         htmlFile.write('<a href="' + redditComment.author._url)
