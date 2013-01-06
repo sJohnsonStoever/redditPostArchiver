@@ -19,21 +19,4 @@ Or you can use your imagination. So, if you're looking for a quick, easy way to 
 
 This package provides a quick way to save a specific subset of that knowledge, and to save it in the most future proof way possible, while maintaining the readability of reddit in its original form.
 
-## Operation ##
 
-### Archiving Mode ###
-
-The normal mode of operation for the software.
-
-* Generates HTML files and CSS files that replicate the feeling of reddit without any of the extraneous data. Side-bar information and links, for example, will not be present. 
-* An easily parsed file containing the snudown markdown of the post contents and self posts.
-
-**To Do:** A mode that sets the location of the CSS file instead of copying a new one along side the html file every time.
-
-### Archive HTML mode ###
-
-This mode reads the easily-parsed archive files containing the snudown markdown content of comments and self posts and produces HTML output, along with associates CSS files. 
-
-Useful for re-rendering html files after custom changes to this software. 
-
-If file space per archival file is at a premium, then one could potentially only archive the markdown-formatted file and generate the HTML as needed.  
