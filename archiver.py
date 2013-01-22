@@ -37,11 +37,14 @@ def parsePost(postObject):
         # The post is a self post
         htmlFile.write('<div class="title">\n')
         htmlFile.write(postObject.title)
-        htmlFile.write('\n<br/><strong>Posted by <a id="userlink" href="')
-        htmlFile.write(postObject.author._url)
-        htmlFile.write('">')
-        htmlFile.write(postObject.author.name)
-        htmlFile.write('</a>. </strong><em>')
+        htmlFile.write('\n<br/><strong>')
+        try:
+            htmlFile.write('Posted by <a id="userlink" href="' + postObject.author._url)
+            htmlFile.write('">')
+            htmlFile.write(postObject.author.name)
+            htmlFile.write('</a>. </strong><em>')
+        except AttributeError:
+            htmlFile.write('Posted by [Deleted]. </strong><em>')
         htmlFile.write('Posted at ')
         postDate = time.gmtime(postObject.created_utc)
         htmlFile.write(str(postDate.tm_hour) + ':')
@@ -74,11 +77,14 @@ def parsePost(postObject):
         htmlFile.write('<a id="postlink" href="' + postObject.url)
         htmlFile.write('">')
         htmlFile.write(postObject.title)
-        htmlFile.write('</a>\n<br/><strong>Posted by <a id="userlink" href="')
-        htmlFile.write(postObject.author._url)
-        htmlFile.write('">')
-        htmlFile.write(postObject.author.name)
-        htmlFile.write('</a>. </strong><em>')
+        htmlFile.write('</a>\n<br/><strong>')
+        try:
+            htmlFile.write('Posted by <a id="userlink" href="' + postObject.author._url)
+            htmlFile.write('">')
+            htmlFile.write(postObject.author.name)
+            htmlFile.write('</a>. </strong><em>')
+        except AttributeError:
+            htmlFile.write('Posted by [Deleted]. </strong><em>')
         htmlFile.write('Posted at ')
         postDate = time.gmtime(postObject.created_utc)
         htmlFile.write(str(postDate.tm_hour) + ':')
@@ -135,6 +141,6 @@ def fixMarkdown(markdown):
     newMarkdown = markdown.encode('utf8')
     return re.sub('\&gt;', '>', newMarkdown)
 # End Function Definitions
-r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.91')
+r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.92')
 parsePost(r.get_submission(submission_id=postID))
 htmlFile.close()
