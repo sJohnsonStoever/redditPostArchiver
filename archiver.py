@@ -32,6 +32,7 @@ def writeHeader(posttitle):
 
 def parsePost(postObject):
     writeHeader(postObject.title)
+    postObject.replace_more_comments()
     if postObject.is_self:
         # The post is a self post
         htmlFile.write('<div class="title">\n')
@@ -59,7 +60,7 @@ def parsePost(postObject):
         htmlFile.write(snudown.markdown(fixMarkdown(postObject.selftext)))
         htmlFile.write('</div>\n')
         htmlFile.write('</div>\n')
-        for comment in postObject.all_comments:
+        for comment in postObject._comments:
             parseComment(comment)
         htmlFile.write('<hr id="footerhr">\n')
         htmlFile.write('<div id="footer"><em>Archived on ')
@@ -96,7 +97,7 @@ def parsePost(postObject):
         htmlFile.write(postObject.url)
         htmlFile.write('</p>\n</div>\n')
         htmlFile.write('</div>\n')
-        for comment in postObject.all_comments:
+        for comment in postObject._comments:
             parseComment(comment)
         htmlFile.write('<hr id="footerhr">\n')
         htmlFile.write('<div id="footer"><em>Archived on ')
