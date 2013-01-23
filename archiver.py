@@ -52,83 +52,61 @@ def parsePost(postObject):
         postAuthorExists = 1
     except AttributeError:
     	postAuthorExists = 0
+    htmlFile.write('<div class="title">\n')
     if postObject.is_self:
         # The post is a self post
-        htmlFile.write('<div class="title">\n')
         htmlFile.write(postObject.title)
         htmlFile.write('\n<br/><strong>')
-        if postAuthorExists:
-            htmlFile.write('Posted by <a id="userlink" href="' + postObject.author._url)
-            htmlFile.write('">')
-            htmlFile.write(postAuthorName)
-            htmlFile.write('</a>. </strong><em>')
-        else:
-            htmlFile.write('Posted by [Deleted]. </strong><em>')
-        htmlFile.write('Posted at ')
-        postDate = time.gmtime(postObject.created_utc)
-        htmlFile.write(str(postDate.tm_hour) + ':')
-        htmlFile.write(str(postDate.tm_min) + ' UTC on ')
-        htmlFile.write(monthsList[postDate.tm_mon-1] + ' ')
-        htmlFile.write(str(postDate.tm_mday) + ', ' + str(postDate.tm_year))
-        htmlFile.write('. ' + str(postObject.ups - postObject.downs))
-        htmlFile.write(' Points. </em><em>(self.<a id="selfLink" href="')
-        htmlFile.write(postObject.subreddit._url)
-        htmlFile.write('">' + postObject.subreddit.display_name)
-        htmlFile.write('</a>)</em><em>')
-        htmlFile.write(' (<a id="postpermalink" href="')
-        htmlFile.write(postObject.permalink)
-        htmlFile.write('">Permalink</a>)</em>\n')
-        htmlFile.write('<div class="post">\n')
-        htmlFile.write(snudown.markdown(fixMarkdown(postObject.selftext)))
-        htmlFile.write('</div>\n')
-        htmlFile.write('</div>\n')
-        for comment in postObject._comments:
-            parseComment(comment, postAuthorName, postAuthorExists)
-        htmlFile.write('<hr id="footerhr">\n')
-        htmlFile.write('<div id="footer"><em>Archived on ')
-        htmlFile.write(str(datetime.datetime.utcnow()))
-        htmlFile.write(' UTC</em></div>')
-        htmlFile.write('\n\n</body>\n</html>\n')
-        #Done
     else:
         # The post is a link post
-        htmlFile.write('<div class="title">\n')
         htmlFile.write('<a id="postlink" href="' + postObject.url)
         htmlFile.write('">')
         htmlFile.write(postObject.title)
         htmlFile.write('</a>\n<br/><strong>')
-        if postAuthorExists:
-            htmlFile.write('Posted by <a id="userlink" href="' + postObject.author._url)
-            htmlFile.write('">')
-            htmlFile.write(postAuthorName)
-            htmlFile.write('</a>. </strong><em>')
-        else:
-            htmlFile.write('Posted by [Deleted]. </strong><em>')
-        htmlFile.write('Posted at ')
-        postDate = time.gmtime(postObject.created_utc)
-        htmlFile.write(str(postDate.tm_hour) + ':')
-        htmlFile.write(str(postDate.tm_min) + ' UTC on ')
-        htmlFile.write(monthsList[postDate.tm_mon-1] + ' ')
-        htmlFile.write(str(postDate.tm_mday) + ', ' + str(postDate.tm_year))
-        htmlFile.write('. ' + str(postObject.ups - postObject.downs))
+    if postAuthorExists:
+        htmlFile.write('Posted by <a id="userlink" href="' + postObject.author._url)
+        htmlFile.write('">')
+        htmlFile.write(postAuthorName)
+        htmlFile.write('</a>. </strong><em>')
+    else:
+        htmlFile.write('Posted by [Deleted]. </strong><em>')
+    htmlFile.write('Posted at ')
+    postDate = time.gmtime(postObject.created_utc)
+    htmlFile.write(str(postDate.tm_hour) + ':')
+    htmlFile.write(str(postDate.tm_min) + ' UTC on ')
+    htmlFile.write(monthsList[postDate.tm_mon-1] + ' ')
+    htmlFile.write(str(postDate.tm_mday) + ', ' + str(postDate.tm_year))
+    htmlFile.write('. ' + str(postObject.ups - postObject.downs))
+    if postObject.is_self:
+        htmlFile.write(' Points. </em><em>(self.<a id="selfLink" href="')
+    else:
         htmlFile.write(' Points. </em><em>(<a id="selfLink" href="')
-        htmlFile.write(postObject.subreddit._url)
-        htmlFile.write('">' + postObject.subreddit.display_name)
+    htmlFile.write(postObject.subreddit._url)
+    htmlFile.write('">' + postObject.subreddit.display_name)
+    if postObject.is_self:
+        htmlFile.write('</a>)</em><em>')
+    else:
         htmlFile.write('</a> Subreddit)</em><em>')
-        htmlFile.write(' (<a id="postpermalink" href="')
-        htmlFile.write(postObject.permalink)
-        htmlFile.write('">Permalink</a>)</em>\n')
+    htmlFile.write(' (<a id="postpermalink" href="')
+    htmlFile.write(postObject.permalink)
+    htmlFile.write('">Permalink</a>)</em>\n')
+    if postObject.is_self:
+        htmlFile.write('<div class="post">\n')
+        htmlFile.write(snudown.markdown(fixMarkdown(postObject.selftext)))
+        htmlFile.write('</div>\n')
+    else:
         htmlFile.write('<div class="post">\n<p>\n')
         htmlFile.write(postObject.url)
         htmlFile.write('</p>\n</div>\n')
-        htmlFile.write('</div>\n')
-        for comment in postObject._comments:
-            parseComment(comment, postAuthorName, postAuthorExists)
-        htmlFile.write('<hr id="footerhr">\n')
-        htmlFile.write('<div id="footer"><em>Archived on ')
-        htmlFile.write(str(datetime.datetime.utcnow()))
-        htmlFile.write(' UTC</em></div>')
-        htmlFile.write('\n\n</body>\n</html>\n')
+    htmlFile.write('</div>\n')
+    for comment in postObject._comments:
+        parseComment(comment, postAuthorName, postAuthorExists)
+    htmlFile.write('<hr id="footerhr">\n')
+    htmlFile.write('<div id="footer"><em>Archived on ')
+    htmlFile.write(str(datetime.datetime.utcnow()))
+    htmlFile.write(' UTC</em></div>')
+    htmlFile.write('\n\n</body>\n</html>\n')
+    #Done
 def parseComment(redditComment, postAuthorName, postAuthorExists, isRoot=True):
     commentAuthorName = ''
     commentAuthorExists = 0
