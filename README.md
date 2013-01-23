@@ -5,11 +5,11 @@
 
 **a script written in Python**
 
-**Dependencies:** [PRAW](https://github.com/praw-dev/praw), [snudown](https://github.com/reddit/snudown), Python 2.7 (Python 3.x not supported since snudown doesn't work in 3.x)
+**Dependencies:** [PRAW](https://github.com/praw-dev/praw) (Version 2+), [snudown](https://github.com/reddit/snudown), Python 2.7 (Python 3.x not supported since snudown doesn't work in 3.x)
 
 ## Quick Start ##
 
-Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply change the post id on line 14 of the script. 
+Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `./archiver 15zmjl`).
 
 ## Motivation ##
 
