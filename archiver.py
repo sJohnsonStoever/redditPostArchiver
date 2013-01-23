@@ -23,6 +23,7 @@ By Samuel Johnson Stoever
 htmlFile = open(outputFilePath,'w')
 monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
+
 def writeHeader(posttitle):
     htmlFile.write('<!DOCTYPE html>\n<html>\n<head>\n')
     htmlFile.write('\t<meta charset="utf-8"/>\n')
@@ -33,17 +34,24 @@ def writeHeader(posttitle):
 def parsePost(postObject):
     writeHeader(postObject.title)
     postObject.replace_more_comments()
+    postAuthorName = ''
+    postAuthorExists = 0
+    try:
+        postAuthorName = postObject.author.name
+        postAuthorExists = 1
+    except AttributeError:
+    	postAuthorExists = 0
     if postObject.is_self:
         # The post is a self post
         htmlFile.write('<div class="title">\n')
         htmlFile.write(postObject.title)
         htmlFile.write('\n<br/><strong>')
-        try:
+        if postAuthorExists:
             htmlFile.write('Posted by <a id="userlink" href="' + postObject.author._url)
             htmlFile.write('">')
-            htmlFile.write(postObject.author.name)
+            htmlFile.write(postAuthorName)
             htmlFile.write('</a>. </strong><em>')
-        except AttributeError:
+        else:
             htmlFile.write('Posted by [Deleted]. </strong><em>')
         htmlFile.write('Posted at ')
         postDate = time.gmtime(postObject.created_utc)
@@ -64,7 +72,7 @@ def parsePost(postObject):
         htmlFile.write('</div>\n')
         htmlFile.write('</div>\n')
         for comment in postObject._comments:
-            parseComment(comment)
+            parseComment(comment, postAuthorName, postAuthorExists)
         htmlFile.write('<hr id="footerhr">\n')
         htmlFile.write('<div id="footer"><em>Archived on ')
         htmlFile.write(str(datetime.datetime.utcnow()))
@@ -78,12 +86,12 @@ def parsePost(postObject):
         htmlFile.write('">')
         htmlFile.write(postObject.title)
         htmlFile.write('</a>\n<br/><strong>')
-        try:
+        if postAuthorExists:
             htmlFile.write('Posted by <a id="userlink" href="' + postObject.author._url)
             htmlFile.write('">')
-            htmlFile.write(postObject.author.name)
+            htmlFile.write(postAuthorName)
             htmlFile.write('</a>. </strong><em>')
-        except AttributeError:
+        else:
             htmlFile.write('Posted by [Deleted]. </strong><em>')
         htmlFile.write('Posted at ')
         postDate = time.gmtime(postObject.created_utc)
@@ -104,13 +112,20 @@ def parsePost(postObject):
         htmlFile.write('</p>\n</div>\n')
         htmlFile.write('</div>\n')
         for comment in postObject._comments:
-            parseComment(comment)
+            parseComment(comment, postAuthorName, postAuthorExists)
         htmlFile.write('<hr id="footerhr">\n')
         htmlFile.write('<div id="footer"><em>Archived on ')
         htmlFile.write(str(datetime.datetime.utcnow()))
         htmlFile.write(' UTC</em></div>')
         htmlFile.write('\n\n</body>\n</html>\n')
-def parseComment(redditComment, isRoot=True):
+def parseComment(redditComment, postAuthorName, postAuthorExists, isRoot=True):
+    commentAuthorName = ''
+    commentAuthorExists = 0
+    try:
+        commentAuthorName = redditComment.author.name
+        commentAuthorExists = 1
+    except AttributeError:
+        commentAuthorExists = 0
     if isRoot:
         htmlFile.write('<div id="' + str(redditComment.id))
         htmlFile.write('" class="comment">\n')
@@ -118,10 +133,14 @@ def parseComment(redditComment, isRoot=True):
         htmlFile.write('<div id="' + str(redditComment.id)) 
         htmlFile.write('" class="comment" style="margin-bottom:10px;margin-left:0px;">\n')
     htmlFile.write('<div class="commentinfo">\n')
-    try:
-        htmlFile.write('<a href="' + redditComment.author._url)
-        htmlFile.write('">' + redditComment.author.name + '</a> <em>')
-    except AttributeError:
+    if commentAuthorExists:
+        if postAuthorExists and postAuthorName == commentAuthorName:
+            htmlFile.write('<a href="' + redditComment.author._url)
+            htmlFile.write('" style="color: #fff; background: #00F; border-radius: 3px;">' + commentAuthorName + '</a> <em>')
+        else:
+            htmlFile.write('<a href="' + redditComment.author._url)
+            htmlFile.write('">' + commentAuthorName + '</a> <em>')
+    else:
         htmlFile.write('<strong>[Deleted]</strong> <em>')
     htmlFile.write(str(redditComment.ups - redditComment.downs))
     htmlFile.write(' Points </em><em>')
@@ -134,13 +153,13 @@ def parseComment(redditComment, isRoot=True):
     htmlFile.write('</em></div>\n')
     htmlFile.write(snudown.markdown(fixMarkdown(redditComment.body)))
     for reply in redditComment._replies:
-        parseComment(reply, False)
+        parseComment(reply, postAuthorName, postAuthorExists, False)
     htmlFile.write('</div>\n')
     #Done
 def fixMarkdown(markdown):
     newMarkdown = markdown.encode('utf8')
     return re.sub('\&gt;', '>', newMarkdown)
 # End Function Definitions
-r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.92')
+r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.93')
 parsePost(r.get_submission(submission_id=postID))
 htmlFile.close()
