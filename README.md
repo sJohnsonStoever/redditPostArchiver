@@ -11,6 +11,8 @@
 
 Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `./archiver 15zmjl`).
 
+As of now, only posts and the associated comment threads can be archived. Saving a specific comment thread, starting with a comment, will be supported in the future. 
+
 ## Motivation ##
 
 If you're addicted to reddit, then it's pretty likely stemming from the fact that it changed the way you live your life (or a part of it at least). Contained within their databases lies a huge treasure trove of information: academic, creative, informative, transformative, etc. It's true that a huge amount of the information that is accessible through reddit is through links, but the discussions on those links are often the best part about reddit. And then think about all the .self posts on all of reddit.
