@@ -6,13 +6,17 @@ import snudown
 import datetime
 import time
 import re
+import sys
 
 """ 
 Customization Configuration
 
 """
+# Default postID: #
 postID='15zmjl'
-outputFilePath='./' + postID + '.html'
+# Path to which to output the file #
+outputFilePath='./'
+# The Path to the stylesheet, relative to where the html file will be stored #
 pathToCSS='css/style.css'
 
 """
@@ -20,6 +24,13 @@ Reddit Post Archiver
 By Samuel Johnson Stoever
 """
 
+if len(sys.argv) == 1:
+    print('No post ID was provided. Using default postID.')
+elif len(sys.argv) > 2:
+    print('Too Many Arguments. Using default postID.')
+else:
+    postID = sys.argv[1]
+outputFilePath = outputFilePath + postID + '.html'
 htmlFile = open(outputFilePath,'w')
 monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
