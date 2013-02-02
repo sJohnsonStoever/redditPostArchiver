@@ -43,28 +43,28 @@ def writeHeader(posttitle):
     htmlFile.write('</head>\n<body>\n')
 
 def parsePost(postObject):
-    writeHeader(postObject.title)
+    writeHeader(fixUnicode(postObject.title))
     postObject.replace_more_comments()
     postAuthorName = ''
     postAuthorExists = 0
     try:
-        postAuthorName = postObject.author.name
+        postAuthorName = fixUnicode(postObject.author.name)
         postAuthorExists = 1
     except AttributeError:
     	postAuthorExists = 0
     htmlFile.write('<div class="title">\n')
     if postObject.is_self:
         # The post is a self post
-        htmlFile.write(postObject.title)
+        htmlFile.write(fixUnicode(postObject.title))
         htmlFile.write('\n<br/><strong>')
     else:
         # The post is a link post
-        htmlFile.write('<a id="postlink" href="' + postObject.url)
+        htmlFile.write('<a id="postlink" href="' + fixUnicode(postObject.url))
         htmlFile.write('">')
-        htmlFile.write(postObject.title)
+        htmlFile.write(fixUnicode(postObject.title))
         htmlFile.write('</a>\n<br/><strong>')
     if postAuthorExists:
-        htmlFile.write('Posted by <a id="userlink" href="' + postObject.author._url)
+        htmlFile.write('Posted by <a id="userlink" href="' + fixUnicode(postObject.author._url))
         htmlFile.write('">')
         htmlFile.write(postAuthorName)
         htmlFile.write('</a>. </strong><em>')
@@ -88,7 +88,7 @@ def parsePost(postObject):
     else:
         htmlFile.write('</a> Subreddit)</em><em>')
     htmlFile.write(' (<a id="postpermalink" href="')
-    htmlFile.write(postObject.permalink)
+    htmlFile.write(fixUnicode(postObject.permalink))
     htmlFile.write('">Permalink</a>)</em>\n')
     if postObject.is_self:
         htmlFile.write('<div class="post">\n')
@@ -111,7 +111,7 @@ def parseComment(redditComment, postAuthorName, postAuthorExists, isRoot=True):
     commentAuthorName = ''
     commentAuthorExists = 0
     try:
-        commentAuthorName = redditComment.author.name
+        commentAuthorName = fixUnicode(redditComment.author.name)
         commentAuthorExists = 1
     except AttributeError:
         commentAuthorExists = 0
@@ -148,6 +148,8 @@ def parseComment(redditComment, postAuthorName, postAuthorExists, isRoot=True):
 def fixMarkdown(markdown):
     newMarkdown = markdown.encode('utf8')
     return re.sub('\&gt;', '>', newMarkdown)
+def fixUnicode(text):
+    return text.encode('utf8')
 # End Function Definitions
 r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.93')
 parsePost(r.get_submission(submission_id=postID))
