@@ -125,7 +125,7 @@ def parseComment(redditComment, postAuthorName, postAuthorExists, isRoot=True):
     if commentAuthorExists:
         if postAuthorExists and postAuthorName == commentAuthorName:
             htmlFile.write('<a href="' + redditComment.author._url)
-            htmlFile.write('" style="color: #fff; background: #00F; border-radius: 3px;">' + commentAuthorName + '</a> <em>')
+            htmlFile.write('" class="postOP-comment">' + commentAuthorName + '</a> <em>')
         else:
             htmlFile.write('<a href="' + redditComment.author._url)
             htmlFile.write('">' + commentAuthorName + '</a> <em>')

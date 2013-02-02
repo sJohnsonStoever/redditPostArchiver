@@ -13,7 +13,7 @@ body {
     margin: 0px 0px 0px 0px;
 }
 div.title {
-    background: #e6eaed;
+    background: #CEE3F8;
     font-size: 20px;
     margin-top: 0px;
     margin-bottom: 15px;
@@ -99,6 +99,13 @@ div.commentinfo a:hover {
     font-weight: 800;
     margin-right: 10px;
     text-decoration: underline;
+}
+div.commentinfo  a.postOP-comment {
+	color: #fff;
+	background: #00F;
+	border-radius: 3px;
+	padding-left:3px;
+	padding-right: 3px;
 }
 div#footer {
     text-align:center;
