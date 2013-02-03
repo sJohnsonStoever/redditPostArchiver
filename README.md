@@ -9,6 +9,11 @@
 
 ## Quick Start ##
 
+As a regular user:
+
+   sudo pip install praw
+   sudo pip install snudown
+
 Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `./archiver 15zmjl`).
 
 As of now, only posts and the associated comment threads can be archived. Saving a specific comment thread, starting with a comment, will be supported in the future. 
