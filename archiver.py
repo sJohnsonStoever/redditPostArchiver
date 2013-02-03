@@ -7,6 +7,7 @@ import datetime
 import time
 import re
 import sys
+from requests.exceptions import HTTPError
 
 """ 
 Customization Configuration
@@ -31,7 +32,6 @@ elif len(sys.argv) > 2:
 else:
     postID = sys.argv[1]
 outputFilePath = outputFilePath + postID + '.html'
-htmlFile = open(outputFilePath,'w')
 monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 
@@ -153,7 +153,10 @@ def fixUnicode(text):
 # End Function Definitions
 r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.93')
 try:
-    parsePost(r.get_submission(submission_id=postID))
-except: 
+    thePost = r.get_submission(submission_id=postID)
+    htmlFile = open(outputFilePath,'w')
+    parsePost(thePost)
+    htmlFile.close()
+except HTTPError: 
     print('Unable to Archive Post: Invalid PostID.')
-htmlFile.close()
+##Done
