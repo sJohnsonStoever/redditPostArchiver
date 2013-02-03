@@ -152,5 +152,8 @@ def fixUnicode(text):
     return text.encode('utf8')
 # End Function Definitions
 r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.93')
-parsePost(r.get_submission(submission_id=postID))
+try:
+    parsePost(r.get_submission(submission_id=postID))
+except: 
+    print('Unable to Archive Post: Invalid PostID.')
 htmlFile.close()
