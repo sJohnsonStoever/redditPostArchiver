@@ -11,8 +11,8 @@
 
 As a regular user:
 
-   sudo pip install praw
-   sudo pip install snudown
+    sudo pip install praw  
+    sudo pip install snudown
 
 Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `./archiver 15zmjl`).
 
