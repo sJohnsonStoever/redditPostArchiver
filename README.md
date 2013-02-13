@@ -9,10 +9,15 @@
 
 ## Quick Start ##
 
-As a regular user:
+As a regular user, install praw:
 
     sudo pip install praw  
-    sudo pip install snudown
+
+Snudown was recently removed from the pip database, it seems, so to install snudown:
+
+    git clone https://github.com/reddit/snudown.git
+    cd snudown
+    sudo python setup.py install
 
 Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `./archiver 15zmjl`).
 
