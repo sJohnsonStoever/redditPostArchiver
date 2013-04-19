@@ -152,8 +152,8 @@ def fixUnicode(text):
     return text.encode('utf8')
 # End Function Definitions
 r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.93')
-# uncomment the following line to login                                        
 # Disclaimer, storing plain text passwords is bad.
+# uncomment the following line to login (e.g., in case of Unable to Archive Post:
 # r.login('username', 'password')
 try:
     thePost = r.get_submission(submission_id=postID)
@@ -161,5 +161,5 @@ try:
     parsePost(thePost)
     htmlFile.close()
 except HTTPError: 
-    print('Unable to Archive Post: Invalid PostID.')
+    print('Unable to Archive Post: Invalid PostID or Log In Required (see line 157 of script)')
 ##Done
