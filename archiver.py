@@ -152,6 +152,9 @@ def fixUnicode(text):
     return text.encode('utf8')
 # End Function Definitions
 r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.93')
+# uncomment the following line to login                                        
+# Disclaimer, storing plain text passwords is bad.
+# r.login('username', 'password')
 try:
     thePost = r.get_submission(submission_id=postID)
     htmlFile = open(outputFilePath,'w')
