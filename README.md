@@ -1,11 +1,13 @@
-
 # redditPostArchiver  #
 
 ### A Post Thread Archiver for Reddit ###
 
 **a script written in Python**
 
-**Dependencies:** [PRAW](https://github.com/praw-dev/praw) (Version 2+), [snudown](https://github.com/reddit/snudown), Python 2.7 (Python 3.x not supported since snudown doesn't work in 3.x)
+**Dependencies:** Either
+
+ * [PRAW](https://github.com/praw-dev/praw), [snudown](https://github.com/reddit/snudown), Python 2.7 (Python 3.x not supported in official snudown branch)
+ * [PRAW](https://github.com/praw-dev/praw), [Chid's snudown fork](https://github.com/chid/snudown), Python 3
 
 ## Quick Start ##
 
