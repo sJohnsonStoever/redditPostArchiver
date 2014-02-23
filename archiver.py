@@ -147,9 +147,9 @@ def parseComment(redditComment, postAuthorName, postAuthorExists, isRoot=True):
     #Done
 def fixMarkdown(markdown):
     newMarkdown = markdown.encode('utf8')
-    return re.sub('\&gt;', '>', newMarkdown)
+    return re.sub('\&gt;', '>', str(newMarkdown))
 def fixUnicode(text):
-    return text.encode('utf8')
+    return str(text.encode('utf8'))
 # End Function Definitions
 r = praw.Reddit(user_agent='RedditPostArchiver Bot, version 0.93')
 # Disclaimer, storing plain text passwords is bad.
