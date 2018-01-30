@@ -6,7 +6,6 @@
 
 **Dependencies:**
     [PRAW](https://github.com/praw-dev/praw),
-    [mistletoe](https://github.com/miyuchina/mistletoe),
     [requests](http://docs.python-requests.org/en/master/),
     Python 3
 
@@ -16,7 +15,6 @@ As a regular user, install praw:
 
     sudo pip install requests
     sudo pip install praw
-    sudo pip install mistletoe
 
 Visit the PRAW documentation and follow the instructions for a script installation:
 

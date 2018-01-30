@@ -1,9 +1,7 @@
 import datetime
-import re
 import sys
 import time
 
-import mistletoe  # replaced snudown
 import praw
 import yaml
 from requests.exceptions import HTTPError
@@ -92,8 +90,7 @@ def parse_post(post_object):
     html_file.write('">Permalink</a>)</em>\n')
     if post_object.is_self:
         html_file.write('<div class="post">\n')
-        nmarkdown = fix_markdown(post_object.selftext)
-        html_file.write(mistletoe.markdown(nmarkdown))
+        html_file.write(post_object.selftext_html)
         html_file.write('</div>\n')
     else:
         html_file.write('<div class="post">\n<p>\n')
@@ -141,18 +138,10 @@ def parse_comment(reddit_comment, post_author_name, post_author_exists, is_root=
     html_file.write(monthsList[post_date.tm_mon - 1] + ' ')
     html_file.write(str(post_date.tm_mday) + ', ' + str(post_date.tm_year))
     html_file.write('</em></div>\n')
-    html_file.write(mistletoe.markdown(fix_markdown(reddit_comment.body)))
+    html_file.write(reddit_comment.body_html)
     for reply in reddit_comment._replies:
         parse_comment(reply, post_author_name, post_author_exists, False)
     html_file.write('</div>\n')
-
-
-def fix_markdown(markdown):
-    return re.sub('&gt;', '>', str(markdown))
-
-
-def fix_unicode(text):
-    return str(text.encode('utf8'))
 
 
 credentials = yaml.load(open('./credentials.yml'))
