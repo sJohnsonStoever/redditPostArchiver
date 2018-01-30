@@ -4,22 +4,25 @@
 
 **a script written in Python**
 
-**Dependencies:** Either
-
- * [PRAW](https://github.com/praw-dev/praw), [snudown](https://github.com/reddit/snudown), Python 2.7 (Python 3.x not supported in official snudown branch)
- * [PRAW](https://github.com/praw-dev/praw), [Chid's snudown fork](https://github.com/chid/snudown), Python 3
+**Dependencies:**
+    [PRAW](https://github.com/praw-dev/praw),
+    [mistletoe](https://github.com/miyuchina/mistletoe),
+    [requests](http://docs.python-requests.org/en/master/),
+    Python 3
 
 ## Quick Start ##
 
 As a regular user, install praw:
 
-    sudo pip install praw  
+    sudo pip install requests
+    sudo pip install praw
+    sudo pip install mistletoe
 
-Snudown was recently removed from the pip database, it seems, so to install snudown:
+Visit the PRAW documentation and follow the instructions for a script installation:
 
-    git clone https://github.com/reddit/snudown.git
-    cd snudown
-    sudo python setup.py install
+https://praw.readthedocs.io/en/latest/getting_started/authentication.html
+
+Edit the included "credentials.yml" file to replace "test" with the variables from your reddit account.
 
 Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `./archiver 15zmjl`).
 
