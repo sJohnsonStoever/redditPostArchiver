@@ -38,13 +38,17 @@ Edit the included "credentials.yml" file to replace "test" with the variables fr
 
 Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `python archiver.py 15zmjl`).
 
+The output is a webpage that looks like this:
+
+![screenshot of the saved thread](https://raw.githubusercontent.com/pl77/redditPostArchiver/master/savedthread.png "screenshot of the saved thread")
+
 #### postids.py ####
 
-Navigate to the folder with postids.py and run the script. A text file will be written into that same folder. To choose which author is to be archived simply provide the author's name (username) as an argument to the script (e.g., `python postids.py GallowBoob`).
+Navigate to the folder with postids.py and run the script. A text file will be written into that same folder. To choose which author is to be archived simply provide the author's name (username) as an argument: `python postids.py GallowBoob`
 
 #### subpostids.py ####
 
-Navigate to the folder with subpostids.py and run the script. A CSV file will be written into that same folder. To choose which subreddit is to be archived simply provide the subreddit name as an argument to the script (e.g., `python subpostids.py opendirectories`).
+Navigate to the folder with subpostids.py and run the script. A CSV file will be written into that same folder. To choose which subreddit is to be archived simply provide the subreddit name as an argument:`python subpostids.py opendirectories`
 
 ## Motivation ##
 
