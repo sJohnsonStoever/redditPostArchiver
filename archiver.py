@@ -13,7 +13,7 @@ Customization Configuration
 
 """
 # Default post_id: #
-post_id = '15zmjl'
+post_id = '7i2w7i'
 # Path to which to output the file #
 # output_file_path = './'
 # The Path to the stylesheet, relative to where the html file will be stored #
@@ -89,9 +89,13 @@ def parse_post(post_object):
     html_file.write(' (<a id="postpermalink" href="')
     html_file.write(post_object.permalink)
     html_file.write('">Permalink</a>)</em>\n')
-    if post_object.is_self:
+    if post_object.is_self and post_object.selftext_html:
         html_file.write('<div class="post">\n')
         html_file.write(post_object.selftext_html)
+        html_file.write('</div>\n')
+    elif post_object.is_self:
+        html_file.write('<div class="post">\n')
+        html_file.write('')
         html_file.write('</div>\n')
     else:
         html_file.write('<div class="post">\n<p>\n')
@@ -139,7 +143,10 @@ def parse_comment(reddit_comment, post_author_name, post_author_exists, is_root=
     html_file.write(monthsList[post_date.tm_mon - 1] + ' ')
     html_file.write(str(post_date.tm_mday) + ', ' + str(post_date.tm_year))
     html_file.write('</em></div>\n')
-    html_file.write(reddit_comment.body_html)
+    if reddit_comment.body_html:
+        html_file.write(reddit_comment.body_html)
+    else:
+        html_file.write(reddit_comment.body)
     for reply in reddit_comment._replies:
         parse_comment(reply, post_author_name, post_author_exists, False)
     html_file.write('</div>\n')
