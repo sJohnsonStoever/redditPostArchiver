@@ -123,7 +123,7 @@ def main():
     push_post_id_set = get_push_submissions(username)
     post_id_set = reddit_post_id_set.union(push_post_id_set)
     print("Total posts submitted by", username, "in set:", len(post_id_set))
-    with open(output_file_path, 'w') as post_file:
+    with open(output_file_path, 'w', encoding='UTF-8') as post_file:
         post_file.writelines(post_id_set)
 
 

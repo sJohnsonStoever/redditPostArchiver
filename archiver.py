@@ -151,7 +151,7 @@ r = praw.Reddit(client_id=credentials['client_id'],
                 user_agent=credentials['user_agent'])
 try:
     the_post = r.submission(id=post_id)
-    with open(output_file_path, 'w') as html_file:
+    with open(output_file_path, 'w', encoding='UTF-8') as html_file:
         parse_post(the_post)
 except HTTPError:
     print('Unable to Archive Post: Invalid PostID or Log In Required (see line 157 of script)')
