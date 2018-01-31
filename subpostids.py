@@ -15,7 +15,7 @@ Customization Configuration
 subreddit = 'opendirectories'
 
 # Path to which to output the file #
-output_file_path = './'
+# output_file_path = './'
 # The Path to the stylesheet, relative to where the html file will be stored #
 path_to_css = 'css/style.css'
 
@@ -30,7 +30,6 @@ elif len(sys.argv) > 2:
     print('Too Many Arguments. Using default subreddit.')
 else:
     subreddit = sys.argv[1]
-output_file_path = output_file_path + subreddit + '.csv'
 
 credentials = yaml.load(open('./credentials.yml'))
 
@@ -123,6 +122,10 @@ def main():
     push_post_id_set = get_push_submissions(subreddit)
     post_id_set = reddit_post_id_set.union(push_post_id_set)
     print("Total posts submitted to", subreddit, "in set:", len(post_id_set))
+
+    filedate = arrow.now().timestamp
+    output_file_path = "{subreddit}_{timestamp}.csv".format(subreddit=subreddit, timestamp=filedate)
+
     with open(output_file_path, 'w', encoding='UTF-8') as post_file:
         post_file.writelines(post_id_set)
 

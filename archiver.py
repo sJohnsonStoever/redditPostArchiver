@@ -2,6 +2,7 @@ import datetime
 import sys
 import time
 
+import arrow
 import praw
 import yaml
 from requests.exceptions import HTTPError
@@ -13,7 +14,7 @@ Customization Configuration
 # Default post_id: #
 post_id = '15zmjl'
 # Path to which to output the file #
-output_file_path = './'
+# output_file_path = './'
 # The Path to the stylesheet, relative to where the html file will be stored #
 path_to_css = 'css/style.css'
 
@@ -28,7 +29,6 @@ elif len(sys.argv) > 2:
     print('Too Many Arguments. Using default post_id.')
 else:
     post_id = sys.argv[1]
-output_file_path = output_file_path + post_id + '.html'
 monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
               'November', 'December']
 
@@ -149,6 +149,10 @@ credentials = yaml.load(open('./credentials.yml'))
 r = praw.Reddit(client_id=credentials['client_id'],
                 client_secret=credentials['client_secret'],
                 user_agent=credentials['user_agent'])
+
+filedate = arrow.now().timestamp
+output_file_path = "{post_id}_{timestamp}.html".format(post_id=post_id, timestamp=filedate)
+
 try:
     the_post = r.submission(id=post_id)
     with open(output_file_path, 'w', encoding='UTF-8') as html_file:

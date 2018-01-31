@@ -15,7 +15,7 @@ Customization Configuration
 username = 'GallowBoob'
 
 # Path to which to output the file #
-output_file_path = './'
+# output_file_path = './'
 # The Path to the stylesheet, relative to where the html file will be stored #
 path_to_css = 'css/style.css'
 
@@ -30,7 +30,6 @@ elif len(sys.argv) > 2:
     print('Too Many Arguments. Using default username.')
 else:
     username = sys.argv[1]
-output_file_path = output_file_path + username + '.txt'
 
 credentials = yaml.load(open('./credentials.yml'))
 
@@ -123,6 +122,10 @@ def main():
     push_post_id_set = get_push_submissions(username)
     post_id_set = reddit_post_id_set.union(push_post_id_set)
     print("Total posts submitted by", username, "in set:", len(post_id_set))
+
+    filedate = arrow.now().timestamp
+    output_file_path = "{username}_{timestamp}.txt".format(username=username, timestamp=filedate)
+
     with open(output_file_path, 'w', encoding='UTF-8') as post_file:
         post_file.writelines(post_id_set)
 
