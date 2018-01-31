@@ -1,4 +1,5 @@
 import datetime
+import os
 import sys
 import time
 
@@ -144,7 +145,8 @@ def parse_comment(reddit_comment, post_author_name, post_author_exists, is_root=
     html_file.write('</div>\n')
 
 
-credentials = yaml.load(open('./credentials.yml'))
+cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
+credentials = yaml.load(open(cred_path))
 
 r = praw.Reddit(client_id=credentials['client_id'],
                 client_secret=credentials['client_secret'],

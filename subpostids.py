@@ -1,3 +1,4 @@
+import os
 import sys
 
 import arrow
@@ -31,7 +32,8 @@ elif len(sys.argv) > 2:
 else:
     subreddit = sys.argv[1]
 
-credentials = yaml.load(open('./credentials.yml'))
+cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
+credentials = yaml.load(open(cred_path))
 
 r = praw.Reddit(client_id=credentials['client_id'],
                 client_secret=credentials['client_secret'],
