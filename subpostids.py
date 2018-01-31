@@ -12,7 +12,7 @@ Customization Configuration
 
 """
 # Default post_id: #
-username = 'GallowBoob'
+subreddit = 'opendirectories'
 
 # Path to which to output the file #
 output_file_path = './'
@@ -25,12 +25,12 @@ By Samuel Johnson Stoever
 """
 
 if len(sys.argv) == 1:
-    print('No username was provided. Using default username.')
+    print('No subreddit was provided. Using default subreddit.')
 elif len(sys.argv) > 2:
-    print('Too Many Arguments. Using default username.')
+    print('Too Many Arguments. Using default subreddit.')
 else:
-    username = sys.argv[1]
-output_file_path = output_file_path + username + '.txt'
+    subreddit = sys.argv[1]
+output_file_path = output_file_path + subreddit + '.csv'
 
 credentials = yaml.load(open('./credentials.yml'))
 
@@ -39,16 +39,16 @@ r = praw.Reddit(client_id=credentials['client_id'],
                 user_agent=credentials['user_agent'])
 
 
-def get_user_post_id_set(user, first_id, postcount):
-    user_post_id_set = set()
+def get_sub_post_id_set(subrd, first_id, postcount):
+    sub_post_id_set = set()
     if first_id is not None:
         params = dict(after=first_id, count=postcount)
-        postgenerators = user.submissions.new(params=params)
+        postgenerators = subrd.new(params=params)
     else:
-        postgenerators = user.submissions.new()
+        postgenerators = subrd.new()
     for post in postgenerators:
         post_id = "{}\n".format(post.id)
-        user_post_id_set.add(post_id)
+        sub_post_id_set.add(post_id)
         postcount += 1
         if postgenerators.yielded == 100:
             try:
@@ -56,50 +56,50 @@ def get_user_post_id_set(user, first_id, postcount):
             except KeyError:
                 first_id = None
 
-    return user_post_id_set, first_id, postcount
+    return sub_post_id_set, first_id, postcount
 
 
-def get_reddit_submissions(reddituser):
+def get_reddit_submissions(redditsub):
     try:
-        user = r.redditor(reddituser)
+        user = r.subreddit(redditsub)
     except HTTPError:
         print('Unable to write post ids: Invalid username or login credentials')
         return
     first_id = None
     postcount = 0
     try:
-        user_post_id_set, first_id, postcount = get_user_post_id_set(user, first_id, postcount)
+        sub_post_id_set, first_id, postcount = get_sub_post_id_set(user, first_id, postcount)
     except RequestException:
         return
-    post_id_set = user_post_id_set
-    subnumber = len(user_post_id_set)
-    print("Received", subnumber, "posts from", reddituser)
+    post_id_set = sub_post_id_set
+    subnumber = len(sub_post_id_set)
+    print("Received", subnumber, "posts from", redditsub)
     totalsubnumber = subnumber
     while subnumber > 99:
         try:
-            user_post_id_set, first_id, postcount = get_user_post_id_set(user, first_id, postcount)
+            sub_post_id_set, first_id, postcount = get_sub_post_id_set(user, first_id, postcount)
         except RequestException:
             break
-        subnumber = len(user_post_id_set)
+        subnumber = len(sub_post_id_set)
         totalsubnumber += subnumber
-        post_id_set |= user_post_id_set
-        print("Received additional", subnumber, "posts from", reddituser, " -  Total posts received so far:",
+        post_id_set |= sub_post_id_set
+        print("Received additional", subnumber, "posts from", redditsub, " -  Total posts received so far:",
               totalsubnumber, "with", len(post_id_set), "in set.")
     return post_id_set
 
 
-def get_push_submissions(reddituser):
+def get_push_submissions(redditsub):
     push_post_id_set = set()
     now = arrow.utcnow().timestamp
-    linktemplate = "https://api.pushshift.io/reddit/search/submission/?author={author}" \
+    linktemplate = "https://api.pushshift.io/reddit/search/submission/?subreddit={subreddit}" \
                    "&before={timestamp}&sort=desc&size=500"
-    url = linktemplate.format(author=reddituser, timestamp=now)
+    url = linktemplate.format(subreddit=redditsub, timestamp=now)
     rp = requests.get(url)
     push = rp.json()
     earliest = now
     subnumber = len(push['data'])
     totalsubnumber = 0
-    print("Received", subnumber, "pushshift.io posts from", reddituser)
+    print("Received", subnumber, "pushshift.io posts from", redditsub)
     while subnumber > 0:
         totalsubnumber += subnumber
         itemlist = push['data']
@@ -109,20 +109,20 @@ def get_push_submissions(reddituser):
                 earliest = item['created_utc']
             post_id = "{}\n".format(item['id'])
             push_post_id_set.add(post_id)
-        url = linktemplate.format(author=reddituser, timestamp=earliest)
+        url = linktemplate.format(subreddit=redditsub, timestamp=earliest)
         rp = requests.get(url)
         push = rp.json()
         subnumber = len(push['data'])
-        print("Received additional", subnumber, "posts from", reddituser, " -  Total posts received so far:",
+        print("Received additional", subnumber, "posts from", redditsub, " -  Total posts received so far:",
               totalsubnumber, "with", len(push_post_id_set), "in pushshift.io set.")
     return push_post_id_set
 
 
 def main():
-    reddit_post_id_set = get_reddit_submissions(username)
-    push_post_id_set = get_push_submissions(username)
+    reddit_post_id_set = get_reddit_submissions(subreddit)
+    push_post_id_set = get_push_submissions(subreddit)
     post_id_set = reddit_post_id_set.union(push_post_id_set)
-    print("Total posts submitted by", username, "in set:", len(post_id_set))
+    print("Total posts submitted to", subreddit, "in set:", len(post_id_set))
     with open(output_file_path, 'w') as post_file:
         post_file.writelines(post_id_set)
 

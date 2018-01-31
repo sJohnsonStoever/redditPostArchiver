@@ -7,6 +7,8 @@
 **Dependencies:**
     [PRAW](https://github.com/praw-dev/praw),
     [requests](http://docs.python-requests.org/en/master/),
+    [pyyaml](https://github.com/yaml/pyyaml),
+    [arrow](http://arrow.readthedocs.io/en/latest/),
     Python 3
 
 ## Quick Start ##
@@ -15,6 +17,8 @@ As a regular user, install praw:
 
     sudo pip install requests
     sudo pip install praw
+    sudo pip install pyyaml
+    sudo pip install arrow
 
 Visit the PRAW documentation and follow the instructions for a script installation:
 
@@ -22,9 +26,17 @@ https://praw.readthedocs.io/en/latest/getting_started/authentication.html
 
 Edit the included "credentials.yml" file to replace "test" with the variables from your reddit account.
 
-Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `./archiver 15zmjl`).
+#### archive.py ####
 
-As of now, only posts and the associated comment threads can be archived. Saving a specific comment thread, starting with a comment, will be supported in the future. 
+Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `python archiver.py 15zmjl`).
+
+#### postids.py ####
+
+Navigate to the folder with postids.py and run the script. A text file will be written into that same folder. To choose which author is to be archived simply provide the author's name (username) as an argument to the script (e.g., `python postids.py GallowBoob`).
+
+#### subpostids.py ####
+
+Navigate to the folder with subpostids.py and run the script. A CSV file will be written into that same folder. To choose which subreddit is to be archived simply provide the subreddit name as an argument to the script (e.g., `python subpostids.py opendirectories`).
 
 ## Motivation ##
 
