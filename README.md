@@ -13,7 +13,7 @@
 
 ## Quick Start ##
 
-As a regular user, install praw:
+As a regular user, install:
 
     sudo pip install requests
     sudo pip install praw
@@ -23,6 +23,14 @@ As a regular user, install praw:
 Visit the PRAW documentation and follow the instructions for a script installation:
 
 https://praw.readthedocs.io/en/latest/getting_started/authentication.html
+
+In short, you need to register a new app with Reddit:
+
+https://www.reddit.com/prefs/apps/
+
+and grab your client ID and client secret from the app page:
+
+![client ID under the blue PRAW OAuth2 Test logo on the top left, client secret beside 'secret', and add a redirect uri at the bottom, which isn't used but still required](https://raw.githubusercontent.com/pl77/redditPostArchiver/master/CreateApp.png "client ID under the blue PRAW OAuth2 Test logo on the top left, client secret beside 'secret', and add a redirect uri at the bottom, which isn't used but still required")
 
 Edit the included "credentials.yml" file to replace "test" with the variables from your reddit account.
 
