@@ -25,6 +25,7 @@ If you want to run the subreddit database script, you must also install:
     sudo pip install apsw
     sudo pip install peewee
     sudo pip install urlextract
+    sudo pip install tqdm
 
 Visit the PRAW documentation and follow the instructions for a script installation:
 
