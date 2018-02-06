@@ -223,7 +223,7 @@ def chunks(l, n):
 
 
 def reddit_submission_update(update_length=300000):
-    print('---PROCESSING REDDIT API SUBMISSIONS')
+    print('---UPDATING SUBMISSIONS WITH DATA FROM THE REDDIT API')
     needs_update = Submission.select().where(
         (Submission.retrieved_on - Submission.created_utc) < update_length)
     needs_update_list = list()
@@ -255,6 +255,56 @@ def reddit_submission_update(update_length=300000):
                     else:
                         Submission.update(score=rdsub.score, selftext=rdsub.selftext_html, retrieved_on=updatedtime,
                                           deleted=False).where(Submission.link_id == rdsub.id).execute()
+                    pbar.update(1)
+
+
+def reddit_comment_update(update_length=300000):
+    print('---UPDATING COMMENTS WITH DATA FROM THE REDDIT API')
+    totalnumber = Comment.select().where(
+        (Comment.retrieved_on - Comment.created_utc) < update_length).count()
+    needs_update_list = list()
+    needs_update = Comment.select().where(
+        (Comment.retrieved_on - Comment.created_utc) < update_length)
+    print('    ---Building Task List.  This could take a while for large subreddits')
+
+    with tqdm(total=totalnumber) as nbar:
+        for dbcomment in needs_update:
+            fullname = "t1_{}".format(dbcomment.comment_id)
+            needs_update_list.append(fullname)
+            nbar.update(1)
+    needs_update_list = list(chunks(needs_update_list, 100))
+    print('    ---Accessing data from Reddit API and entering into database')
+    with tqdm(total=totalnumber) as pbar:
+        for nlist in needs_update_list:
+            try:
+                rd_comments = list(r.info(nlist))
+            except RequestException:
+                print("Connection Error to Reddit API. Exiting...")
+                quit()
+                return
+            with db.atomic():
+                for rdcomment in rd_comments:
+                    updatedtime = arrow.now().timestamp
+                    if rdcomment.author is None and rdcomment.body == '[deleted]':
+                        Comment.update(score=rdcomment.score,
+                                       retrieved_on=updatedtime,
+                                       deleted=True).where(Comment.comment_id == rdcomment.id).execute()
+                        """
+                    elif rdcomment.body == '[deleted]':
+                        Comment.update(score=rdcomment.score,
+                                       retrieved_on=updatedtime,
+                                       deleted=False).where(Comment.comment_id == rdcomment.id).execute()
+                    elif rdcomment.author is None:
+                        Comment.update(score=rdcomment.score,
+                                       # body=rdcomment.body_html,
+                                       retrieved_on=updatedtime,
+                                       deleted=True).where(Comment.comment_id == rdcomment.id).execute()
+                        """
+                    else:
+                        Comment.update(score=rdcomment.score,
+                                       # body=rdcomment.body_html,
+                                       retrieved_on=updatedtime,
+                                       deleted=False).where(Comment.comment_id == rdcomment.id).execute()
                     pbar.update(1)
 
 
@@ -650,11 +700,12 @@ def main():
     if appconfig.rsub:
         reddit_submission_update()
     process_comments()
+    if appconfig.rcom:
+        reddit_comment_update()
     if appconfig.extract:
         process_comment_urls()
 
 
 if __name__ == '__main__':
     freeze_support()
-
     main()
