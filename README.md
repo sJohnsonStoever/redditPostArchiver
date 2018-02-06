@@ -20,6 +20,12 @@ As a regular user, install:
     sudo pip install pyyaml
     sudo pip install arrow
 
+If you want to run the subreddit database script, you must also install:
+
+    sudo pip install apsw
+    sudo pip install peewee
+    sudo pip install urlextract
+
 Visit the PRAW documentation and follow the instructions for a script installation:
 
 https://praw.readthedocs.io/en/latest/getting_started/authentication.html
@@ -49,6 +55,10 @@ Navigate to the folder with postids.py and run the script. A text file will be w
 #### subpostids.py ####
 
 Navigate to the folder with subpostids.py and run the script. A CSV file will be written into that same folder. To choose which subreddit is to be archived simply provide the subreddit name as an argument:`python subpostids.py opendirectories`
+
+#### subreddit.py ####
+
+NEW!!! Run `subreddit.py <subredditname>` and it will grab every submission and comment from that subreddit and store it in a sqlite database.  Furthermore, it will then parse all of the text in the comment bodies for an possible URL. if you rerun the script, it will avoid redownloading any comments or scripts so you can keep it updated.
 
 ## Motivation ##
 
