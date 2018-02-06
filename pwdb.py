@@ -74,7 +74,7 @@ class Submission(BaseModel):
     thumbnail = ForeignKeyField(Url, default=None, null=True)  # default",
     view_count = IntegerField(default=None, null=True)
     permalink = TextField(default=None, null=True)  # /r/gonewild/comments/7ub3rk/playing_with_dolls_f/",
-    deleted = BooleanField(default=None, null=True)
+    deleted = BooleanField(default=None, null=True, index=True)
 
 
 class SubmissionLinks(BaseModel):

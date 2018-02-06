@@ -11,6 +11,13 @@
     [arrow](http://arrow.readthedocs.io/en/latest/),
     Python 3
 
+**Additional dependencies for subreddit.py:**
+    [apsw](https://rogerbinns.github.io/apsw/),
+    [peewee](http://docs.peewee-orm.com/en/latest/index.html),
+    [urlextract](https://github.com/lipoja/URLExtract),
+    [tqdm](https://pypi.python.org/pypi/tqdm),
+
+
 ## Quick Start ##
 
 As a regular user, install:
@@ -20,7 +27,7 @@ As a regular user, install:
     sudo pip install pyyaml
     sudo pip install arrow
 
-If you want to run the subreddit database script, you must also install:
+If you want to run the subreddit database script, you must also install apsw, peewee, urlextract, and tqdm:
 
     sudo pip install apsw
     sudo pip install peewee

@@ -63,7 +63,7 @@ def parse_post(post_object):
         html_file.write(post_object.title)
         html_file.write('</a>\n<br/><strong>')
     if post_author_exists:
-        html_file.write('Posted by <a id="userlink" href="' + post_object.author._path)
+        html_file.write('Posted by <a id="userlink" href="https://www.reddit.com' + post_object.author._path)
         html_file.write('">')
         html_file.write(post_author_name)
         html_file.write('</a>. </strong><em>')
@@ -77,16 +77,16 @@ def parse_post(post_object):
     html_file.write(str(post_date.tm_mday) + ', ' + str(post_date.tm_year))
     html_file.write('. ' + str(post_object.ups - post_object.downs))
     if post_object.is_self:
-        html_file.write(' Points. </em><em>(self.<a id="selfLink" href="')
+        html_file.write(' Points. </em><em>(self.<a id="selfLink" href="https://www.reddit.com')
     else:
-        html_file.write(' Points. </em><em>(<a id="selfLink" href="')
+        html_file.write(' Points. </em><em>(<a id="selfLink" href="https://www.reddit.com')
     html_file.write(post_object.subreddit._path)
     html_file.write('">' + post_object.subreddit.display_name)
     if post_object.is_self:
         html_file.write('</a>)</em><em>')
     else:
         html_file.write('</a> Subreddit)</em><em>')
-    html_file.write(' (<a id="postpermalink" href="')
+    html_file.write(' (<a id="postpermalink" href="https://www.reddit.com')
     html_file.write(post_object.permalink)
     html_file.write('">Permalink</a>)</em>\n')
     if post_object.is_self and post_object.selftext_html:
@@ -127,10 +127,10 @@ def parse_comment(reddit_comment, post_author_name, post_author_exists, is_root=
     html_file.write('<div class="commentinfo">\n')
     if comment_author_exists:
         if post_author_exists and post_author_name == comment_author_name:
-            html_file.write('<a href="' + reddit_comment.author._path)
+            html_file.write('<a href="https://www.reddit.com' + reddit_comment.author._path)
             html_file.write('" class="postOP-comment">' + comment_author_name + '</a> <em>')
         else:
-            html_file.write('<a href="' + reddit_comment.author._path)
+            html_file.write('<a href="https://www.reddit.com' + reddit_comment.author._path)
             html_file.write('">' + comment_author_name + '</a> <em>')
     else:
         html_file.write('<strong>[Deleted]</strong> <em>')

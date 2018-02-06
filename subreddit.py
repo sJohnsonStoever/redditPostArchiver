@@ -127,6 +127,75 @@ class ApplicationConfiguration(object):
     extract = property(get_extract, set_extract)
 
 
+parser = argparse.ArgumentParser(
+    description="""Subreddit Download Script""", epilog="""
+                   This program has the ability to scrape all posts and comments from a subreddit and then parse
+                   all comments for any urls.  There is no need to script loops in bash or shell for populating by date.
+                    The program will happily grab all items from the beginning of Reddit in 2006 through present. 
+                    """)
+
+parser.add_argument("subreddit", default='opendirectories', type=str,
+                    help="""Which subreddit do you want to process""")
+
+parser.add_argument("-s", "--rsub", action='store_true',
+                    help="""Choose if you DO NOT want to update submission scores and deleted status with new values from the Reddit API""")
+
+parser.add_argument("-c", "--rcom", action='store_true',
+                    help="""Choose if you DO NOT want to update comment scores and deleted status with values from the Reddit API""")
+
+parser.add_argument("-e", "--extract", action='store_true',
+                    help="""Extract URLS from comment text. CAUTION: CPU intensive""")
+
+parser.add_argument("-d", "--directory", help="""Add a path where the database file should be created. Defaults to 
+                                                 the directory from where the script was run. 
+                                                 Enclose directories that have spaces in double quotes.""")
+
+parser.add_argument("-o", "--oldestdate", default=None, type=date_parse, help="""The earliest date for which to scrape Reddit date. 
+                                            If this date is excluded the program will start scraping from the 
+                                            beginning of Reddit. Format YYYY-MM-DD, i.e. -s 2008-12-25""")
+parser.add_argument("-n", "--newestdate", default=None, type=date_parse, help="""The most recent date for which to scrape Reddit date. 
+                                            If this date is excluded the program will start scraping from this moment, 
+                                            back to the start date. Format YYYY-MM-DD, i.e. -s 2017-01-31""")
+
+# this stores our application parameters so it can get passed around to functions
+appconfig = ApplicationConfiguration()
+cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
+credentials = yaml.load(open(cred_path))
+r = praw.Reddit(client_id=credentials['client_id'],
+                client_secret=credentials['client_secret'],
+                user_agent=credentials['user_agent'])
+appconfig.reddit = r
+args = parser.parse_args()
+if args.subreddit:
+    appconfig.subreddit = args.subreddit
+
+if args.newestdate:
+    appconfig.newestdate = args.newestdate
+
+if args.oldestdate:
+    appconfig.oldestdate = args.oldestdate
+
+if args.directory:
+    appconfig.base_directory = args.directory
+
+if args.rsub:
+    appconfig.rsub = False
+
+if args.rcom:
+    appconfig.rcom = False
+
+if args.extract:
+    appconfig.extract = True
+
+appconfig.database_name = "{}.db".format(appconfig.subreddit)
+db.init(appconfig.database_name, timeout=60, pragmas=(
+    ('journal_mode', 'wal'),
+    ('cache_size', -1024 * 64)))
+db.connect()
+db.create_tables([AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
+                  SubmissionLinks, CommentLinks])
+
+
 def get_sub_post_id_set(subrd, first_id, postcount):
     sub_post_id_set = set()
     if first_id is not None:
@@ -411,65 +480,65 @@ def get_push_comments(newestdate, oldestdate):
     return push_comment_id_set
 
 
-def url_worker(appconfig, input_queue, output_queue, lock):
-    db.init(appconfig.database_name, timeout=60, pragmas=(
-        ('journal_mode', 'wal'),
-        ('cache_size', -1024 * 64)))
-    db.connect()
-    db.create_tables([AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
-                      SubmissionLinks, CommentLinks])
+def url_worker(input_queue, output_queue, lock):
+
     for comment_id, body in iter(input_queue.get, 'STOP'):
         # result = calculate(func, args)
         url_set = extract_urls(body)
         lock.acquire()
-        try:
-            comment = Comment.get(id=comment_id)
-            comment.number_urls = len(url_set)
-            comment.save()
-            for url in url_set:
-                url, urlcreated = Url.get_or_create(link=url)
-                try:
-                    CommentLinks.get_or_create(comment=comment_id, url=url.id)
-                except SQLError:
-                    print(comment_id, url.id)
-                    raise
-        finally:
-            lock.release()
-        output_queue.put(1)
+        with db.atomic():
+            try:
+                Comment.set_by_id(comment_id, dict(number_urls=len(url_set)))
+                for url in url_set:
+                    try:
+                        url_id = Url.insert(link=url).execute()
+                    except IntegrityError:
+                        url = Url.get(link=url)
+                        url_id = url.id
+                    # url, urlcreated = Url.get_or_create(link=url)
+                    try:
+                        CommentLinks.insert(comment=comment_id, url=url_id).on_conflict_ignore().execute()
+                    except SQLError:
+                        print(comment_id, url_id)
+                        raise
+            finally:
+                lock.release()
+            output_queue.put(1)
 
 
-def process_comment_urls(limit=None):
+def process_comment_urls(limit=100000):
     print('---EXTRACTING COMMENT URLS')
     number_of_processes = 8
-    if limit:
-        queue_tasks = [(comment.id, comment.body) for comment in Comment.select().where(
-            Comment.number_urls.is_null()).limit(limit)]
-    else:
-        queue_tasks = [(comment.id, comment.body) for comment in Comment.select().where(
-            Comment.number_urls.is_null())]
+    totalcompleted = 0
+    lock = Lock()
 
-    with tqdm(total=len(queue_tasks)) as pbar:
-        lock = Lock()
-        # Create queues
-        task_queue = Queue()
-        done_queue = Queue()
+    total_to_process = Comment.select().where(Comment.number_urls.is_null()).count()
 
-        # Submit tasks
-        for task in queue_tasks:
-            task_queue.put(task)
+    with tqdm(total=total_to_process) as pbar:
+        while totalcompleted < total_to_process:
+            queue_tasks = [(comment.id, comment.body) for comment in Comment.select().where(
+                Comment.number_urls.is_null()).limit(limit)]
+            # Create queues
+            task_queue = Queue()
+            done_queue = Queue()
 
-        # Start worker processes
-        for i in range(number_of_processes):
-            Process(target=url_worker, args=(appconfig, task_queue, done_queue, lock)).start()
+            # Submit tasks
+            for task in queue_tasks:
+                task_queue.put(task)
 
-        # Get and print results
-        print('Unordered results:')
-        for i in range(len(queue_tasks)):
-            pbar.update(done_queue.get())
+            # Start worker processes
+            for i in range(number_of_processes):
+                Process(target=url_worker, args=(task_queue, done_queue, lock)).start()
 
-        # Tell child processes to stop
-        for i in range(number_of_processes):
-            task_queue.put('STOP')
+            # Update progress bar
+            for i in range(len(queue_tasks)):
+                updateint = done_queue.get()
+                pbar.update(updateint)
+                totalcompleted += updateint
+
+            # Tell child processes to stop
+            for i in range(number_of_processes):
+                task_queue.put('STOP')
 
 
 def process_submissions():
@@ -479,7 +548,7 @@ def process_submissions():
     except (TypeError, AttributeError):
         newest_utc = None
     if newest_utc is not None:
-        oldestdate = newest_utc - 1209600  # two weeks overlap, in seconds
+        oldestdate = newest_utc  # - 1209600  # two weeks overlap, in seconds
     else:
         oldestdate = appconfig.oldestdate
 
@@ -496,7 +565,7 @@ def process_submissions():
     except (TypeError, AttributeError):
         oldest_utc = None
     if oldest_utc is not None:
-        newestdate = oldest_utc + 2400000  # four week overlap, in seconds
+        newestdate = oldest_utc  # + 2400000  # four week overlap, in seconds
     else:
         newestdate = appconfig.newestdate
 
@@ -532,7 +601,7 @@ def process_comments():
     except (TypeError, AttributeError):
         newest_utc = None
     if newest_utc is not None:
-        oldestdate = newest_utc - 1209600  # two weeks overlap, in seconds
+        oldestdate = newest_utc  # - 1209600  # two weeks overlap, in seconds
     else:
         oldestdate = appconfig.oldestdate
 
@@ -549,7 +618,7 @@ def process_comments():
     except (TypeError, AttributeError):
         oldest_utc = None
     if oldest_utc is not None:
-        newestdate = oldest_utc + 1209600  # two weeks overlap, in seconds
+        newestdate = oldest_utc  # + 1209600  # two weeks overlap, in seconds
     else:
         newestdate = appconfig.newestdate
 
@@ -577,82 +646,17 @@ def process_comments():
 
 
 def main():
+    """
     process_submissions()
     if appconfig.rsub:
         reddit_submission_update()
     process_comments()
+    """
     if appconfig.extract:
         process_comment_urls()
 
 
 if __name__ == '__main__':
     freeze_support()
-    parser = argparse.ArgumentParser(
-        description="""Subreddit Download Script""", epilog="""
-                       This program has the ability to scrape all posts and comments from a subreddit and then parse
-                       all comments for any urls.  There is no need to script loops in bash or shell for populating by date.
-                        The program will happily grab all items from the beginning of Reddit in 2006 through present. 
-                        """)
-
-    parser.add_argument("subreddit", default='opendirectories', type=str,
-                        help="""Which subreddit do you want to process""")
-
-    parser.add_argument("-s", "--rsub", action='store_true',
-                        help="""Choose if you DO NOT want to update submission scores and deleted status with new values from the Reddit API""")
-
-    parser.add_argument("-c", "--rcom", action='store_true',
-                        help="""Choose if you DO NOT want to update comment scores and deleted status with values from the Reddit API""")
-
-    parser.add_argument("-e", "--extract", action='store_true',
-                        help="""Extract URLS from comment text. CAUTION: CPU intensive""")
-
-    parser.add_argument("-d", "--directory", help="""Add a path where the database file should be created. Defaults to 
-                                                     the directory from where the script was run. 
-                                                     Enclose directories that have spaces in double quotes.""")
-
-    parser.add_argument("-o", "--oldestdate", default=None, type=date_parse, help="""The earliest date for which to scrape Reddit date. 
-                                                If this date is excluded the program will start scraping from the 
-                                                beginning of Reddit. Format YYYY-MM-DD, i.e. -s 2008-12-25""")
-    parser.add_argument("-n", "--newestdate", default=None, type=date_parse, help="""The most recent date for which to scrape Reddit date. 
-                                                If this date is excluded the program will start scraping from this moment, 
-                                                back to the start date. Format YYYY-MM-DD, i.e. -s 2017-01-31""")
-
-    # this stores our application parameters so it can get passed around to functions
-    appconfig = ApplicationConfiguration()
-    cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
-    credentials = yaml.load(open(cred_path))
-    r = praw.Reddit(client_id=credentials['client_id'],
-                    client_secret=credentials['client_secret'],
-                    user_agent=credentials['user_agent'])
-    appconfig.reddit = r
-    args = parser.parse_args()
-    if args.subreddit:
-        appconfig.subreddit = args.subreddit
-
-    if args.newestdate:
-        appconfig.newestdate = args.newestdate
-
-    if args.oldestdate:
-        appconfig.oldestdate = args.oldestdate
-
-    if args.directory:
-        appconfig.base_directory = args.directory
-
-    if args.rsub:
-        appconfig.rsub = False
-
-    if args.rcom:
-        appconfig.rcom = False
-
-    if args.extract:
-        appconfig.extract = True
-
-    appconfig.database_name = "{}.db".format(appconfig.subreddit)
-    db.init(appconfig.database_name, timeout=60, pragmas=(
-        ('journal_mode', 'wal'),
-        ('cache_size', -1024 * 64)))
-    db.connect()
-    db.create_tables([AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
-                      SubmissionLinks, CommentLinks])
 
     main()
