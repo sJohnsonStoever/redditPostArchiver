@@ -646,12 +646,10 @@ def process_comments():
 
 
 def main():
-    """
     process_submissions()
     if appconfig.rsub:
         reddit_submission_update()
     process_comments()
-    """
     if appconfig.extract:
         process_comment_urls()
 
