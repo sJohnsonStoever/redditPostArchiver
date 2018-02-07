@@ -6,6 +6,7 @@ import time
 import arrow
 import praw
 import yaml
+from prawcore.exceptions import NotFound
 from requests.exceptions import HTTPError
 
 """ 
@@ -23,9 +24,15 @@ path_to_css = 'css/style.css'
 Reddit Post Archiver
 By Samuel Johnson Stoever
 """
+bulk_ids = False
+postfname = None
 
 if len(sys.argv) == 1:
     print('No post ID was provided. Using default post_id.')
+elif len(sys.argv) == 3 and sys.argv[1] == '-i':
+    bulk_ids = True
+    postfname = sys.argv[2]
+    print('Bulk processing detected. Using filename', postfname)
 elif len(sys.argv) > 2:
     print('Too Many Arguments. Using default post_id.')
 else:
@@ -159,12 +166,31 @@ r = praw.Reddit(client_id=credentials['client_id'],
                 client_secret=credentials['client_secret'],
                 user_agent=credentials['user_agent'])
 
-filedate = arrow.now().timestamp
-output_file_path = "{post_id}_{timestamp}.html".format(post_id=post_id, timestamp=filedate)
+if bulk_ids:
+    id_list = list()
+    with open(postfname, 'r', encoding='UTF-8') as postids:
+        for pid in postids:
+            pid = pid.rstrip()
+            id_list.append(pid.rstrip())
+    for post_id in id_list:
+        filedate = arrow.now().timestamp
+        output_file_path = "{post_id}_{timestamp}.html".format(post_id=post_id, timestamp=filedate)
+        try:
+            the_post = r.submission(id=post_id)
+            with open(output_file_path, 'w', encoding='UTF-8') as html_file:
+                parse_post(the_post)
+        except HTTPError:
+            print('Unable to Archive Post: Invalid PostID or Log In Required (see line 157 of script)')
+else:
+    filedate = arrow.now().timestamp
+    output_file_path = "{post_id}_{timestamp}.html".format(post_id=post_id, timestamp=filedate)
 
-try:
-    the_post = r.submission(id=post_id)
-    with open(output_file_path, 'w', encoding='UTF-8') as html_file:
-        parse_post(the_post)
-except HTTPError:
-    print('Unable to Archive Post: Invalid PostID or Log In Required (see line 157 of script)')
+    try:
+        the_post = r.submission(id=post_id)
+        with open(output_file_path, 'w', encoding='UTF-8') as html_file:
+            try:
+                parse_post(the_post)
+            except NotFound:
+                print('User not found with Reddit API.  Most likely deleted.')
+    except HTTPError:
+        print('Unable to Archive Post: Invalid PostID or Log In Required (see line 157 of script)')

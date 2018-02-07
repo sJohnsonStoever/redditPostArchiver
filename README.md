@@ -51,6 +51,7 @@ Edit the included "credentials.yml" file to replace "test" with the variables fr
 #### archive.py ####
 
 Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `python archiver.py 15zmjl`).
+If you've used the 'postids.py' program below and generated a text file of reddit submission ids, you can bulk process them with the command `python archiver.py -i <filename>`, i.e. `python archiver.py -i GallowBoob_1517981182.txt`).
 
 The output is a webpage that looks like this:
 
@@ -59,6 +60,7 @@ The output is a webpage that looks like this:
 #### postids.py ####
 
 Navigate to the folder with postids.py and run the script. A text file will be written into that same folder. To choose which author is to be archived simply provide the author's name (username) as an argument: `python postids.py GallowBoob`
+The script should be able to handle usernames alone, or if you paste a url that ends in their name.
 
 #### subpostids.py ####
 
