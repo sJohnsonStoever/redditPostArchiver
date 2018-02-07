@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from peewee import Model, BooleanField, TextField, ForeignKeyField, IntegerField, TimestampField, CompositeKey
 from playhouse.apsw_ext import APSWDatabase
 

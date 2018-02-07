@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 import argparse
 import os
 from apsw import SQLError
-from multiprocessing import Process, Queue, freeze_support, Lock
+from multiprocessing import freeze_support, Lock, get_context
 
 import arrow
 import praw
@@ -50,7 +51,9 @@ class ApplicationConfiguration(object):
         self.__newestdate = arrow.now().timestamp
         self.__rsub = True
         self.__rcom = True
-        self.__extract = True
+        self.__extract = False
+        self.__inputfile = None
+        self.__loop = False
 
     path_to_css = 'css/style.css'
 
@@ -126,22 +129,47 @@ class ApplicationConfiguration(object):
 
     extract = property(get_extract, set_extract)
 
+    def get_inputfile(self):
+        return self.__inputfile
+
+    def set_inputfile(self, inputfile):
+        self.__inputfile = inputfile
+
+    inputfile = property(get_inputfile, set_inputfile)
+
+    def get_loop(self):
+        return self.__loop
+
+    def set_loop(self, loop):
+        self.__loop = loop
+
+    loop = property(get_loop, set_loop)
+
 
 parser = argparse.ArgumentParser(
     description="""Subreddit Download Script""", epilog="""
                    This program has the ability to scrape all posts and comments from a subreddit and then parse
                    all comments for any urls.  There is no need to script loops in bash or shell for populating by date.
-                    The program will happily grab all items from the beginning of Reddit in 2006 through present.\n 
-                    """)
+                    The program will happily grab all items from the beginning of Reddit in 2006 through present.""")
 
 parser.add_argument("subreddit", default='opendirectories', type=str,
-                    help="""Which subreddit do you want to process\n""")
+                    help="""The subreddit name to process.  Alternatively, you put a filename pointing to a text file 
+                    containing a list of subreddits to process but you must set the -i flag!""")
+
+parser.add_argument("-i", "--inputfile", action='store_true',
+                    help="""A file containing a list of subreddit names to continuously scrape.  
+                    Any names added to the file while the scraper is running will be included in the follow up loop""")
+
+parser.add_argument("-l", "--loop", action='store_true',
+                    help="""The program will continuously loop the chosen subreddit.  If a filename containing a list 
+                    of subreddits has been provided with the -i flag, the program will continously 
+                    read and scrape all the subreddits in that list""")
 
 parser.add_argument("-s", "--rsub", action='store_true',
-                    help="""No reddit submission updates, only via pushshift.io\n""")
+                    help="""No reddit submission updates, only scrape with pushshift.io\n""")
 
 parser.add_argument("-c", "--rcom", action='store_true',
-                    help="""No reddit comment updates, only via pushshift.io\n""")
+                    help="""No reddit comment updates, only scrape with pushshift.io\n""")
 
 parser.add_argument("-e", "--extract", action='store_true',
                     help="""Extract URLS from comment text. CPU INTENSIVE\n""")
@@ -315,14 +343,12 @@ def get_push_submissions(newestdate, oldestdate):
     total_available = "https://api.pushshift.io/reddit/search/submission/?subreddit={subreddit}" \
                       "&after={oldestdate}&before={newestdate}&aggs=subreddit&size=0"
     turl = total_available.format(subreddit=appconfig.subreddit, oldestdate=oldestdate, newestdate=newestdate)
-    tp = requests.get(turl)
-    # newestdate = appconfig.newestdate
-    if tp.status_code != 200:
-        print("Connection Error for Pushshift API, quitting...")
-        tp.close()
-        quit()
-    tpush = tp.json()
-    tp.close()
+    with requests.get(turl) as tp:
+        # newestdate = appconfig.newestdate
+        if tp.status_code != 200:
+            print("Connection Error for Pushshift API, quitting...")
+            quit()
+        tpush = tp.json()
     try:
         total_submissions = tpush['aggs']['subreddit'][0]['bg_count']
     except KeyError:
@@ -335,13 +361,11 @@ def get_push_submissions(newestdate, oldestdate):
     with tqdm(total=total_submissions) as pbar:
         while subnumber > 0:
             url = linktemplate.format(subreddit=appconfig.subreddit, oldestdate=oldestdate, newestdate=newestdate)
-            rp = requests.get(url)
-            if rp.status_code != 200:
-                print("Connection Error for Pushshift API, quitting...")
-                rp.close()
-                quit()
-            push = rp.json()
-            rp.close()
+            with requests.get(url) as rp:
+                if rp.status_code != 200:
+                    print("Connection Error for Pushshift API, quitting...")
+                    quit()
+                push = rp.json()
             subnumber = len(push['data'])
             # pbar.update(subnumber)
             with db.atomic():
@@ -473,13 +497,11 @@ def get_push_comments(newestdate, oldestdate):
                       "&after={oldestdate}&before={newestdate}&aggs=subreddit&size=0"
     turl = total_available.format(subreddit=appconfig.subreddit, oldestdate=oldestdate, newestdate=newestdate)
     # newestdate = appconfig.newestdate
-    tp = requests.get(turl)
-    if tp.status_code != 200:
-        print("Connection Error for Pushshift API, quitting...")
-        tp.close()
-        quit()
-    tpush = tp.json()
-    tp.close()
+    with requests.get(turl) as tp:
+        if tp.status_code != 200:
+            print("Connection Error for Pushshift API, quitting...")
+            quit()
+        tpush = tp.json()
     try:
         total_submissions = tpush['aggs']['subreddit'][0]['doc_count']
     except (IndexError, KeyError):
@@ -490,14 +512,12 @@ def get_push_comments(newestdate, oldestdate):
     with tqdm(total=total_submissions) as pbar:
         while subnumber > 0:
             url = linktemplate.format(subreddit=appconfig.subreddit, oldestdate=oldestdate, newestdate=newestdate)
-            rp = requests.get(url)
-            try:
-                push = rp.json()
-            except JSONDecodeError:
-                print("JSON DECODE ERROR on Pushshift API Comments", url)
-                rp.close()
-                return push_comment_id_set
-            rp.close()
+            with requests.get(url) as rp:
+                try:
+                    push = rp.json()
+                except JSONDecodeError:
+                    print("JSON DECODE ERROR on Pushshift API Comments", url)
+                    return push_comment_id_set
             subnumber = len(push['data'])
             totalsubnumber += subnumber
             commentlinktemplate = 'https://www.reddit.com/comments/{comment_id}/_/{comment_id}/.json\n'
@@ -561,6 +581,8 @@ def url_worker(input_queue, output_queue, lock):
 
 def process_comment_urls(limit=100000):
     print('---EXTRACTING COMMENT URLS')
+    ctx = get_context('spawn')
+
     number_of_processes = 4
     totalcompleted = 0
     lock = Lock()
@@ -572,8 +594,8 @@ def process_comment_urls(limit=100000):
             queue_tasks = [(comment.id, comment.body) for comment in Comment.select().where(
                 Comment.number_urls.is_null()).limit(limit)]
             # Create queues
-            task_queue = Queue()
-            done_queue = Queue()
+            task_queue = ctx.Queue()
+            done_queue = ctx.Queue()
 
             # Submit tasks
             for task in queue_tasks:
@@ -581,7 +603,7 @@ def process_comment_urls(limit=100000):
 
             # Start worker processes
             for i in range(number_of_processes):
-                Process(target=url_worker, args=(task_queue, done_queue, lock)).start()
+                ctx.Process(target=url_worker, args=(task_queue, done_queue, lock)).start()
 
             # Update progress bar
             for i in range(len(queue_tasks)):
@@ -711,4 +733,5 @@ def main():
 
 if __name__ == '__main__':
     freeze_support()
+    # set_start_method('spawn')
     main()

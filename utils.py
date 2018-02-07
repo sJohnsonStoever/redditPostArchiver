@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from urlextract import URLExtract
 
 
@@ -30,7 +31,6 @@ def extract_urls(body):
         for suffix in excluded:
             if url.endswith(suffix):
                 continue
-
         # """
         if url.endswith('?noredirect'):
             url = url.replace('?noredirect', '')

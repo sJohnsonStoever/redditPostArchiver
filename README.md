@@ -22,17 +22,18 @@
 
 As a regular user, install:
 
-    sudo pip install requests
-    sudo pip install praw
-    sudo pip install pyyaml
-    sudo pip install arrow
+    sudo pip3 install requests
+    sudo pip3 install praw
+    sudo pip3 install pyyaml
+    sudo pip3 install arrow
 
 If you want to run the subreddit database script, you must also install apsw, peewee, urlextract, and tqdm:
+For those running windows, grab APSW from [Christoph Gohlke's page](https://www.lfd.uci.edu/~gohlke/pythonlibs/#apsw) as it may not install from pip.  You may also have to [grab Peewee from the same page](https://www.lfd.uci.edu/~gohlke/pythonlibs/#peewee) if it doesn't install from pip.
 
-    sudo pip install apsw
-    sudo pip install peewee
-    sudo pip install urlextract
-    sudo pip install tqdm
+    sudo pip3 install apsw
+    sudo pip3 install peewee
+    sudo pip3 install urlextract
+    sudo pip3 install tqdm
 
 Visit the PRAW documentation and follow the instructions for a script installation:
 
