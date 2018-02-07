@@ -131,31 +131,29 @@ parser = argparse.ArgumentParser(
     description="""Subreddit Download Script""", epilog="""
                    This program has the ability to scrape all posts and comments from a subreddit and then parse
                    all comments for any urls.  There is no need to script loops in bash or shell for populating by date.
-                    The program will happily grab all items from the beginning of Reddit in 2006 through present. 
+                    The program will happily grab all items from the beginning of Reddit in 2006 through present.\n 
                     """)
 
 parser.add_argument("subreddit", default='opendirectories', type=str,
-                    help="""Which subreddit do you want to process""")
+                    help="""Which subreddit do you want to process\n""")
 
 parser.add_argument("-s", "--rsub", action='store_true',
-                    help="""Choose if you DO NOT want to update submission scores and deleted status with new values from the Reddit API""")
+                    help="""No reddit submission updates, only via pushshift.io\n""")
 
 parser.add_argument("-c", "--rcom", action='store_true',
-                    help="""Choose if you DO NOT want to update comment scores and deleted status with values from the Reddit API""")
+                    help="""No reddit comment updates, only via pushshift.io\n""")
 
 parser.add_argument("-e", "--extract", action='store_true',
-                    help="""Extract URLS from comment text. CAUTION: CPU intensive""")
+                    help="""Extract URLS from comment text. CPU INTENSIVE\n""")
 
-parser.add_argument("-d", "--directory", help="""Add a path where the database file should be created. Defaults to 
-                                                 the directory from where the script was run. 
-                                                 Enclose directories that have spaces in double quotes.""")
+parser.add_argument("-d", "--directory", help="""Database Path. Defaults to script directory.\n""")
 
 parser.add_argument("-o", "--oldestdate", default=None, type=date_parse, help="""The earliest date for which to scrape Reddit date. 
                                             If this date is excluded the program will start scraping from the 
-                                            beginning of Reddit. Format YYYY-MM-DD, i.e. -s 2008-12-25""")
+                                            beginning of Reddit. Format YYYY-MM-DD, i.e. -o 2008-12-25\n""")
 parser.add_argument("-n", "--newestdate", default=None, type=date_parse, help="""The most recent date for which to scrape Reddit date. 
                                             If this date is excluded the program will start scraping from this moment, 
-                                            back to the start date. Format YYYY-MM-DD, i.e. -s 2017-01-31""")
+                                            back to the start date. Format YYYY-MM-DD, i.e. -n 2017-01-31\n""")
 
 # this stores our application parameters so it can get passed around to functions
 appconfig = ApplicationConfiguration()
@@ -222,7 +220,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def reddit_submission_update(update_length=300000):
+def reddit_submission_update(update_length=604800):
     print('---UPDATING SUBMISSIONS WITH DATA FROM THE REDDIT API')
     needs_update = Submission.select().where(
         (Submission.retrieved_on - Submission.created_utc) < update_length)
@@ -258,7 +256,7 @@ def reddit_submission_update(update_length=300000):
                     pbar.update(1)
 
 
-def reddit_comment_update(update_length=300000):
+def reddit_comment_update(update_length=604800):
     print('---UPDATING COMMENTS WITH DATA FROM THE REDDIT API')
     totalnumber = Comment.select().where(
         (Comment.retrieved_on - Comment.created_utc) < update_length).count()
@@ -321,6 +319,7 @@ def get_push_submissions(newestdate, oldestdate):
     # newestdate = appconfig.newestdate
     if tp.status_code != 200:
         print("Connection Error for Pushshift API, quitting...")
+        tp.close()
         quit()
     tpush = tp.json()
     tp.close()
@@ -339,9 +338,10 @@ def get_push_submissions(newestdate, oldestdate):
             rp = requests.get(url)
             if rp.status_code != 200:
                 print("Connection Error for Pushshift API, quitting...")
+                rp.close()
                 quit()
             push = rp.json()
-
+            rp.close()
             subnumber = len(push['data'])
             # pbar.update(subnumber)
             with db.atomic():
@@ -476,6 +476,7 @@ def get_push_comments(newestdate, oldestdate):
     tp = requests.get(turl)
     if tp.status_code != 200:
         print("Connection Error for Pushshift API, quitting...")
+        tp.close()
         quit()
     tpush = tp.json()
     tp.close()
@@ -494,7 +495,9 @@ def get_push_comments(newestdate, oldestdate):
                 push = rp.json()
             except JSONDecodeError:
                 print("JSON DECODE ERROR on Pushshift API Comments", url)
+                rp.close()
                 return push_comment_id_set
+            rp.close()
             subnumber = len(push['data'])
             totalsubnumber += subnumber
             commentlinktemplate = 'https://www.reddit.com/comments/{comment_id}/_/{comment_id}/.json\n'
@@ -508,7 +511,7 @@ def get_push_comments(newestdate, oldestdate):
                     if item['created_utc'] < newestdate:
                         newestdate = item['created_utc']
                     item['subreddit'] = sub_id
-                    if item['author_flair_text'] is not None:
+                    if 'author_flair_text' in item.keys() and item['author_flair_text'] is not None:
                         author_flair, author_flaircreated = AuthorFlair.get_or_create(text=item['author_flair_text'])
                         item['author_flair'] = author_flair.id
                     else:
@@ -558,7 +561,7 @@ def url_worker(input_queue, output_queue, lock):
 
 def process_comment_urls(limit=100000):
     print('---EXTRACTING COMMENT URLS')
-    number_of_processes = 8
+    number_of_processes = 4
     totalcompleted = 0
     lock = Lock()
 
