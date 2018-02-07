@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import sys
 from apsw import SQLError
-from multiprocessing import freeze_support, Lock, get_context
+from multiprocessing import get_context
 
 import arrow
 import praw
@@ -581,11 +582,15 @@ def url_worker(input_queue, output_queue, lock):
 
 def process_comment_urls(limit=100000):
     print('---EXTRACTING COMMENT URLS')
-    ctx = get_context('spawn')
 
+    is_windows = hasattr(sys, 'getwindowsversion')
+    # print("is Windows?", is_windows)
+    ctx = get_context('forkserver')
     number_of_processes = 4
     totalcompleted = 0
-    lock = Lock()
+    lock = ctx.Lock()
+    db.pragma('journal_mode', 'wal')
+    db.pragma('cache_size', -1024 * 64)
 
     total_to_process = Comment.select().where(Comment.number_urls.is_null()).count()
 
@@ -732,6 +737,5 @@ def main():
 
 
 if __name__ == '__main__':
-    freeze_support()
-    # set_start_method('spawn')
+    # freeze_support()
     main()
