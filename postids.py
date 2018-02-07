@@ -5,7 +5,7 @@ import arrow
 import praw
 import requests
 import yaml
-from prawcore.exceptions import RequestException
+from prawcore.exceptions import RequestException, NotFound
 from requests.exceptions import HTTPError
 
 """ 
@@ -31,7 +31,13 @@ elif len(sys.argv) > 2:
     print('Too Many Arguments. Using default username.')
 else:
     username = sys.argv[1]
+username = username.rstrip('/')
+if '/u/' in username:
+    username = username.split('/u/')[1]
+elif '/user/' in username:
+    username = username.split('/user/')[1]
 
+print('Processing all posts submitted by', username)
 cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
 credentials = yaml.load(open(cred_path))
 
@@ -47,15 +53,18 @@ def get_user_post_id_set(user, first_id, postcount):
         postgenerators = user.submissions.new(params=params)
     else:
         postgenerators = user.submissions.new()
-    for post in postgenerators:
-        post_id = "{}\n".format(post.id)
-        user_post_id_set.add(post_id)
-        postcount += 1
-        if postgenerators.yielded == 100:
-            try:
-                first_id = postgenerators.params['after']
-            except KeyError:
-                first_id = None
+    try:
+        for post in postgenerators:
+            post_id = "{}\n".format(post.id)
+            user_post_id_set.add(post_id)
+            postcount += 1
+            if postgenerators.yielded == 100:
+                try:
+                    first_id = postgenerators.params['after']
+                except KeyError:
+                    first_id = None
+    except NotFound:
+        print('User not found with Reddit API.  Most likely deleted.')
 
     return user_post_id_set, first_id, postcount
 
@@ -84,7 +93,7 @@ def get_reddit_submissions(reddituser):
         subnumber = len(user_post_id_set)
         totalsubnumber += subnumber
         post_id_set |= user_post_id_set
-        print("Received additional", subnumber, "posts from", reddituser, " -  Total posts received so far:",
+        print("Received additional", subnumber, "posts from Reddit for", reddituser, " -  Total posts received so far:",
               totalsubnumber, "with", len(post_id_set), "in set.")
     return post_id_set
 
