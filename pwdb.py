@@ -12,7 +12,8 @@ def db_connect(database, name):
     """
     database.init(name, timeout=60, pragmas=(
         ('journal_mode', 'wal'),
-        ('cache_size', -1024 * 64)))
+        ('cache_size', -1024 * 64)
+        ))
     database.connect()
     database = create_tables(database)
     return database

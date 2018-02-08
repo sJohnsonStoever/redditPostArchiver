@@ -1,11 +1,11 @@
 from apsw import SQLError
 # import psutil
-from multiprocessing import Process, Queue, Lock, freeze_support
+from multiprocessing import Process, Queue, Lock
 
 from tqdm import tqdm
 
-from pwdb import db, AuthorFlair, Author, Subreddit, Submission, Url, Domain, SubmissionCommentIDs, Comment, \
-    SubmissionLinks, CommentLinks
+from pwdb import db, Url, Comment, \
+    CommentLinks, db_connect, create_tables
 from utils import extract_urls
 
 
@@ -14,58 +14,39 @@ from utils import extract_urls
 #
 
 
-def url_worker(udbname, input, output, lock):
-    udb = db
-    udb.init(udbname, timeout=60, pragmas=(
-        ('journal_mode', 'wal'),
-        ('cache_size', -1024 * 64)))
-    udb.connect()
-    udb.create_tables(
-        [AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment, SubmissionLinks,
-         CommentLinks])
-    for comment_id, body in iter(input.get, 'STOP'):
+def url_worker(urlinput, urloutput):
+    for comment_id, body in iter(urlinput.get, 'STOP'):
         # result = calculate(func, args)
         url_set = extract_urls(body)
-        lock.acquire()
-        try:
-            with udb.atomic():
-                # comment = Comment.get(id=comment_id)
-                Comment.update(number_urls=len(url_set)).where(Comment.id == comment_id).execute()
-                # comment.number_urls = len(url_set)
-                # comment.save()
-                for url in url_set:
-                    url, urlcreated = Url.get_or_create(link=url)
-                    try:
-                        # CommentLinks.get_or_create(comment=comment_id, url=url[0].id)
-                        CommentLinks.insert(comment=comment_id, url=url.id).on_conflict_ignore().execute()
-                    except SQLError:
-                        print(comment_id, url.id)
-                        raise
-        finally:
-            lock.release()
-        output.put(1)
+        urloutput.put((comment_id, url_set))
 
 
-def process_comment_urls(udbname, ulimit=100000):
+def process_comment_urls(pdb, udbname, ulimit=100000):
     print('---EXTRACTING COMMENT URLS')
+    # ctx = get_context('spawn')
+    lock = Lock()  # ctx.Lock()
     # NUMBER_OF_PROCESSES = psutil.cpu_count()
-    NUMBER_OF_PROCESSES = 8
+    NUMBER_OF_PROCESSES = 4
     # TASKS1 = [(comment.id, comment.body) for comment in Comment.select().where(Comment.number_urls.is_null()).limit(ulimit)]
     # TASKS2 = [(plus, (i, 8)) for i in range(10)]
     totalcompleted = 0
-    lock = Lock()
+    lock.acquire()
+    pdb = db_connect(pdb, udbname)
+    pdb = create_tables(pdb)
+    lock.release()
     lock.acquire()
     total_to_process = Comment.select().where(Comment.number_urls.is_null()).count()
     lock.release()
     with tqdm(total=total_to_process) as pbar:
         while totalcompleted < total_to_process:
             lock.acquire()
-            queue_tasks = [(comment.id, comment.body) for comment in Comment.select().where(
-                Comment.number_urls.is_null()).limit(ulimit)]
+            with pdb.atomic():
+                queue_tasks = [(comment.id, comment.body) for comment in Comment.select().where(
+                    Comment.number_urls.is_null()).limit(ulimit)]
             lock.release()
             # Create queues
-            task_queue = Queue()
-            done_queue = Queue()
+            task_queue = Queue()  # ctx.Queue()  #
+            done_queue = Queue()  # ctx.Queue()  #
 
             # Submit tasks
             for task in queue_tasks:
@@ -73,14 +54,34 @@ def process_comment_urls(udbname, ulimit=100000):
 
             # Start worker processes
             for i in range(NUMBER_OF_PROCESSES):
-                Process(target=url_worker, args=(udbname, task_queue, done_queue, lock)).start()
+                Process(target=url_worker, args=(task_queue, done_queue)).start()
 
             # Get and print results
             # print('Unordered results:')
             for i in range(len(queue_tasks)):
-                updateint = done_queue.get()
-                pbar.update(updateint)
-                totalcompleted += updateint
+                comment_id, url_set = done_queue.get()
+                lock.acquire()
+                try:
+                    with pdb.atomic():
+                        # comment = Comment.get(id=comment_id)
+                        Comment.update(number_urls=len(url_set)).where(Comment.id == comment_id).execute()
+                        # comment.number_urls = len(url_set)
+                        # comment.save()
+                        for url in url_set:
+                            url, urlcreated = Url.get_or_create(link=url)
+                            try:
+                                # CommentLinks.get_or_create(comment=comment_id, url=url[0].id)
+                                CommentLinks.insert(comment=comment_id, url=url.id).on_conflict_ignore().execute()
+                            except SQLError:
+                                print(comment_id, url.id)
+                                raise
+                except KeyboardInterrupt:
+                    quit()
+                finally:
+                    lock.release()
+
+                pbar.update(1)
+                totalcompleted += 1
 
             # Tell child processes to stop
             for i in range(NUMBER_OF_PROCESSES):
@@ -88,15 +89,9 @@ def process_comment_urls(udbname, ulimit=100000):
 
 
 if __name__ == '__main__':
-    freeze_support()
-    subreddit = 'opendirectories'
+    # set_start_method('spawn')
+    # freeze_support()
+    subreddit = 'gonewild'
     dbname = "{}.db".format(subreddit)
-    db.init(dbname, timeout=60, pragmas=(
-        ('journal_mode', 'wal'),
-        ('cache_size', -1024 * 64)))
-    db.connect()
-    db.create_tables(
-        [AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment, SubmissionLinks,
-         CommentLinks])
     limit = 100000
-    process_comment_urls(dbname, limit)
+    process_comment_urls(db, dbname, limit)
