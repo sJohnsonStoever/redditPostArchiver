@@ -5,6 +5,26 @@ from playhouse.apsw_ext import APSWDatabase
 db = APSWDatabase(None)
 
 
+def db_connect(database, name):
+    """
+    Performs database connection using database settings from settings.py.
+    Returns sqlalchemy engine instance
+    """
+    database.init(name, timeout=60, pragmas=(
+        ('journal_mode', 'wal'),
+        ('cache_size', -1024 * 64)))
+    database.connect()
+    database = create_tables(database)
+    return database
+
+
+def create_tables(database):
+    """"""
+    database.create_tables([AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
+                      SubmissionLinks, CommentLinks])
+    return database
+
+
 class BaseModel(Model):
     class Meta:
         database = db

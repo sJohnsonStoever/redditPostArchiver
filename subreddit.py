@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import os
-import sys
-from apsw import SQLError
-from multiprocessing import get_context
 
 import arrow
 import praw
@@ -15,9 +12,9 @@ from requests.exceptions import SSLError, ChunkedEncodingError, ConnectionError
 from simplejson.scanner import JSONDecodeError
 from tqdm import tqdm
 
+from multiproc import process_comment_urls
 from pwdb import db, AuthorFlair, Author, Subreddit, Submission, Url, Domain, SubmissionCommentIDs, Comment, \
     SubmissionLinks, CommentLinks
-from utils import extract_urls
 
 """ 
 Customization Configuration
@@ -147,82 +144,6 @@ class ApplicationConfiguration(object):
     loop = property(get_loop, set_loop)
 
 
-parser = argparse.ArgumentParser(
-    description="""Subreddit Download Script""", epilog="""
-                   This program has the ability to scrape all posts and comments from a subreddit and then parse
-                   all comments for any urls.  There is no need to script loops in bash or shell for populating by date.
-                    The program will happily grab all items from the beginning of Reddit in 2006 through present.""")
-
-parser.add_argument("subreddit", default='opendirectories', type=str,
-                    help="""The subreddit name to process.  Alternatively, you put a filename pointing to a text file 
-                    containing a list of subreddits to process but you must set the -i flag!""")
-
-parser.add_argument("-i", "--inputfile", action='store_true',
-                    help="""A file containing a list of subreddit names to continuously scrape.  
-                    Any names added to the file while the scraper is running will be included in the follow up loop""")
-
-parser.add_argument("-l", "--loop", action='store_true',
-                    help="""The program will continuously loop the chosen subreddit.  If a filename containing a list 
-                    of subreddits has been provided with the -i flag, the program will continously 
-                    read and scrape all the subreddits in that list""")
-
-parser.add_argument("-s", "--rsub", action='store_true',
-                    help="""No reddit submission updates, only scrape with pushshift.io\n""")
-
-parser.add_argument("-c", "--rcom", action='store_true',
-                    help="""No reddit comment updates, only scrape with pushshift.io\n""")
-
-parser.add_argument("-e", "--extract", action='store_true',
-                    help="""Extract URLS from comment text. CPU INTENSIVE\n""")
-
-parser.add_argument("-d", "--directory", help="""Database Path. Defaults to script directory.\n""")
-
-parser.add_argument("-o", "--oldestdate", default=None, type=date_parse, help="""The earliest date for which to scrape Reddit date. 
-                                            If this date is excluded the program will start scraping from the 
-                                            beginning of Reddit. Format YYYY-MM-DD, i.e. -o 2008-12-25\n""")
-parser.add_argument("-n", "--newestdate", default=None, type=date_parse, help="""The most recent date for which to scrape Reddit date. 
-                                            If this date is excluded the program will start scraping from this moment, 
-                                            back to the start date. Format YYYY-MM-DD, i.e. -n 2017-01-31\n""")
-
-# this stores our application parameters so it can get passed around to functions
-appconfig = ApplicationConfiguration()
-cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
-credentials = yaml.load(open(cred_path))
-r = praw.Reddit(client_id=credentials['client_id'],
-                client_secret=credentials['client_secret'],
-                user_agent=credentials['user_agent'])
-appconfig.reddit = r
-args = parser.parse_args()
-if args.subreddit:
-    appconfig.subreddit = args.subreddit
-
-if args.newestdate:
-    appconfig.newestdate = args.newestdate
-
-if args.oldestdate:
-    appconfig.oldestdate = args.oldestdate
-
-if args.directory:
-    appconfig.base_directory = args.directory
-
-if args.rsub:
-    appconfig.rsub = False
-
-if args.rcom:
-    appconfig.rcom = False
-
-if args.extract:
-    appconfig.extract = True
-
-appconfig.database_name = "{}.db".format(appconfig.subreddit)
-db.init(appconfig.database_name, timeout=60, pragmas=(
-    ('journal_mode', 'wal'),
-    ('cache_size', -1024 * 64)))
-db.connect()
-db.create_tables([AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
-                  SubmissionLinks, CommentLinks])
-
-
 def get_sub_post_id_set(subrd, first_id, postcount):
     sub_post_id_set = set()
     if first_id is not None:
@@ -249,7 +170,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def reddit_submission_update(update_length=604800):
+def reddit_submission_update(appcfg, update_length=604800):
     print('---UPDATING SUBMISSIONS WITH DATA FROM THE REDDIT API')
     needs_update = Submission.select().where(
         (Submission.retrieved_on - Submission.created_utc) < update_length)
@@ -285,7 +206,7 @@ def reddit_submission_update(update_length=604800):
                     pbar.update(1)
 
 
-def reddit_comment_update(update_length=604800):
+def reddit_comment_update(appcfg, update_length=604800):
     print('---UPDATING COMMENTS WITH DATA FROM THE REDDIT API')
     totalnumber = Comment.select().where(
         (Comment.retrieved_on - Comment.created_utc) < update_length).count()
@@ -335,17 +256,16 @@ def reddit_comment_update(update_length=604800):
                     pbar.update(1)
 
 
-def get_push_submissions(newestdate, oldestdate):
-    print('---PROCESSING PUSHSHIFT.IO SUBMISSIONS')
+def get_push_submissions(appcfg, newestdate, oldestdate):
     subnumber = 1  # just to trigger the while loop
-    sub, subcreated = Subreddit.get_or_create(name=appconfig.subreddit)
+    sub, subcreated = Subreddit.get_or_create(name=appcfg.subreddit)
     sub_id = sub.id
     push_post_id_set = set()
     total_available = "https://api.pushshift.io/reddit/search/submission/?subreddit={subreddit}" \
                       "&after={oldestdate}&before={newestdate}&aggs=subreddit&size=0"
-    turl = total_available.format(subreddit=appconfig.subreddit, oldestdate=oldestdate, newestdate=newestdate)
+    turl = total_available.format(subreddit=appcfg.subreddit, oldestdate=oldestdate, newestdate=newestdate)
     with requests.get(turl) as tp:
-        # newestdate = appconfig.newestdate
+        # newestdate = appcfg.newestdate
         if tp.status_code != 200:
             print("Connection Error for Pushshift API, quitting...")
             quit()
@@ -361,7 +281,7 @@ def get_push_submissions(newestdate, oldestdate):
                    "&after={oldestdate}&before={newestdate}&sort=desc&size=500"
     with tqdm(total=total_submissions) as pbar:
         while subnumber > 0:
-            url = linktemplate.format(subreddit=appconfig.subreddit, oldestdate=oldestdate, newestdate=newestdate)
+            url = linktemplate.format(subreddit=appcfg.subreddit, oldestdate=oldestdate, newestdate=newestdate)
             with requests.get(url) as rp:
                 if rp.status_code != 200:
                     print("Connection Error for Pushshift API, quitting...")
@@ -487,32 +407,31 @@ def get_push_submissions(newestdate, oldestdate):
 # https://www.reddit.com/comments/30a7ap/_/cprn5us/.json
 
 
-def get_push_comments(newestdate, oldestdate):
-    print('---PROCESSING PUSHSHIFT.IO COMMENTS')
+def get_push_comments(appcfg, newestdate, oldestdate):
     subnumber = 1
-    sub, subcreated = Subreddit.get_or_create(name=appconfig.subreddit)
+    sub, subcreated = Subreddit.get_or_create(name=appcfg.subreddit)
     sub_id = sub.id
     totalsubnumber = 0
     push_comment_id_set = set()
     total_available = "https://api.pushshift.io/reddit/search/comment/?subreddit={subreddit}" \
                       "&after={oldestdate}&before={newestdate}&aggs=subreddit&size=0"
-    turl = total_available.format(subreddit=appconfig.subreddit, oldestdate=oldestdate, newestdate=newestdate)
-    # newestdate = appconfig.newestdate
+    turl = total_available.format(subreddit=appcfg.subreddit, oldestdate=oldestdate, newestdate=newestdate)
+    # newestdate = appcfg.newestdate
     with requests.get(turl) as tp:
         if tp.status_code != 200:
             print("Connection Error for Pushshift API, quitting...")
             quit()
         tpush = tp.json()
     try:
-        total_submissions = tpush['aggs']['subreddit'][0]['doc_count']
+        total_comments = tpush['aggs']['subreddit'][0]['doc_count']
     except (IndexError, KeyError):
-        print("No new submissions to process from pushshift API")
+        print("No new comments to process from pushshift API")
         return push_comment_id_set
     linktemplate = "https://api.pushshift.io/reddit/search/comment/?subreddit={subreddit}" \
                    "&after={oldestdate}&before={newestdate}&sort=desc&size=500"
-    with tqdm(total=total_submissions) as pbar:
+    with tqdm(total=total_comments) as pbar:
         while subnumber > 0:
-            url = linktemplate.format(subreddit=appconfig.subreddit, oldestdate=oldestdate, newestdate=newestdate)
+            url = linktemplate.format(subreddit=appcfg.subreddit, oldestdate=oldestdate, newestdate=newestdate)
             with requests.get(url) as rp:
                 try:
                     push = rp.json()
@@ -521,14 +440,18 @@ def get_push_comments(newestdate, oldestdate):
                     return push_comment_id_set
             subnumber = len(push['data'])
             totalsubnumber += subnumber
-            commentlinktemplate = 'https://www.reddit.com/comments/{comment_id}/_/{comment_id}/.json\n'
+            commentlinktemplate = 'https://www.reddit.com/comments/{link_id}/_/{comment_id}/.json\n'
             with db.atomic():
                 for item in push['data']:
-                    item['comment_id'] = item.pop('id')
-                    item['comment_id'] = item['comment_id'].replace('t3_', '')
-                    commentlink = commentlinktemplate.format(link_id=item['comment_id'], comment_id=item['comment_id'])
-                    push_comment_id_set.add(commentlink)
-
+                    try:
+                        item['comment_id'] = item.pop('id')
+                        link_id = item['link_id']
+                        item['link_id'] = link_id.replace('t3_', '')
+                        commentlink = commentlinktemplate.format(link_id=item['link_id'], comment_id=item['comment_id'])
+                        push_comment_id_set.add(commentlink)
+                    except KeyError:
+                        print('Key Error on item:', item)
+                        continue
                     if item['created_utc'] < newestdate:
                         newestdate = item['created_utc']
                     item['subreddit'] = sub_id
@@ -546,83 +469,13 @@ def get_push_comments(newestdate, oldestdate):
                             insertdict[key] = item[key]
                     Comment.insert(insertdict).on_conflict_ignore().execute()
             pbar.update(subnumber)
-            """
-            print("Received", subnumber, "comment from", redditsub, " -  Total comments received so far:",
-                  totalsubnumber, "with", len(push_comment_id_set), "in pushshift.io set. Latest Timestamp:", enddate)
-            """
-
     return push_comment_id_set
 
 
-def url_worker(input_queue, output_queue, lock):
-
-    for comment_id, body in iter(input_queue.get, 'STOP'):
-        # result = calculate(func, args)
-        url_set = extract_urls(body)
-        lock.acquire()
-        with db.atomic():
-            try:
-                Comment.set_by_id(comment_id, dict(number_urls=len(url_set)))
-                for url in url_set:
-                    try:
-                        url_id = Url.insert(link=url).execute()
-                    except IntegrityError:
-                        url = Url.get(link=url)
-                        url_id = url.id
-                    # url, urlcreated = Url.get_or_create(link=url)
-                    try:
-                        CommentLinks.insert(comment=comment_id, url=url_id).on_conflict_ignore().execute()
-                    except SQLError:
-                        print(comment_id, url_id)
-                        raise
-            finally:
-                lock.release()
-            output_queue.put(1)
-
-
-def process_comment_urls(limit=100000):
-    print('---EXTRACTING COMMENT URLS')
-
-    is_windows = hasattr(sys, 'getwindowsversion')
-    # print("is Windows?", is_windows)
-    ctx = get_context('forkserver')
-    number_of_processes = 4
-    totalcompleted = 0
-    lock = ctx.Lock()
-    db.pragma('journal_mode', 'wal')
-    db.pragma('cache_size', -1024 * 64)
-
-    total_to_process = Comment.select().where(Comment.number_urls.is_null()).count()
-
-    with tqdm(total=total_to_process) as pbar:
-        while totalcompleted < total_to_process:
-            queue_tasks = [(comment.id, comment.body) for comment in Comment.select().where(
-                Comment.number_urls.is_null()).limit(limit)]
-            # Create queues
-            task_queue = ctx.Queue()
-            done_queue = ctx.Queue()
-
-            # Submit tasks
-            for task in queue_tasks:
-                task_queue.put(task)
-
-            # Start worker processes
-            for i in range(number_of_processes):
-                ctx.Process(target=url_worker, args=(task_queue, done_queue, lock)).start()
-
-            # Update progress bar
-            for i in range(len(queue_tasks)):
-                updateint = done_queue.get()
-                pbar.update(updateint)
-                totalcompleted += updateint
-
-            # Tell child processes to stop
-            for i in range(number_of_processes):
-                task_queue.put('STOP')
-
-
-def process_submissions():
+def process_submissions(appcfg):
     # Get newest submissions with two week overlap
+    print('---PROCESSING NEWEST PUSHSHIFT.IO SUBMISSIONS')
+
     try:
         newest_utc = int(Submission.select(fn.MAX(Submission.created_utc)).scalar().timestamp())
     except (TypeError, AttributeError):
@@ -630,10 +483,10 @@ def process_submissions():
     if newest_utc is not None:
         oldestdate = newest_utc  # - 1209600  # two weeks overlap, in seconds
     else:
-        oldestdate = appconfig.oldestdate
+        oldestdate = appcfg.oldestdate
 
     try:
-        post_id_set = get_push_submissions(appconfig.newestdate, oldestdate)
+        post_id_set = get_push_submissions(appcfg, appcfg.newestdate, oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         post_id_set = None
         print("Connection Error for Pushshift API.  Quitting...")
@@ -647,10 +500,11 @@ def process_submissions():
     if oldest_utc is not None:
         newestdate = oldest_utc  # + 2400000  # four week overlap, in seconds
     else:
-        newestdate = appconfig.newestdate
+        newestdate = appcfg.newestdate
+    print('---PROCESSING OLDEST PUSHSHIFT.IO SUBMISSIONS')
 
     try:
-        old_post_id_set = get_push_submissions(newestdate, appconfig.oldestdate)
+        old_post_id_set = get_push_submissions(appcfg, newestdate, appcfg.oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         old_post_id_set = None
         print("Connection Error for Pushshift API.  Quitting...")
@@ -658,12 +512,12 @@ def process_submissions():
 
     post_id_set |= old_post_id_set
     filedate = arrow.now().timestamp
-    output_file_path = "{subreddit}_{timestamp}.csv".format(subreddit=appconfig.subreddit, timestamp=filedate)
+    output_file_path = "{subreddit}_{timestamp}.csv".format(subreddit=appcfg.subreddit, timestamp=filedate)
 
     # with open(output_file_path, 'w', encoding='UTF-8') as post_file:
     #     post_file.writelines(post_id_set)
 
-    print("Total posts submitted to", appconfig.subreddit, "in set:", len(post_id_set))
+    print("Total posts submitted to", appcfg.subreddit, "in set:", len(post_id_set))
     deleted = Author.get_or_none(name='[deleted]')
     if deleted is not None:
         supdatet = Submission.update(deleted=True).where(
@@ -674,8 +528,10 @@ def process_submissions():
         print('Updated deleted field in submissions.  Set deleted = False for', supdatef, 'records.')
 
 
-def process_comments():
+def process_comments(appcfg):
     # Get newest comments with two week overlap
+    print('---PROCESSING NEWEST PUSHSHIFT.IO COMMENTS')
+
     try:
         newest_utc = int(Comment.select(fn.MAX(Comment.created_utc)).scalar().timestamp())
     except (TypeError, AttributeError):
@@ -683,10 +539,10 @@ def process_comments():
     if newest_utc is not None:
         oldestdate = newest_utc  # - 1209600  # two weeks overlap, in seconds
     else:
-        oldestdate = appconfig.oldestdate
+        oldestdate = appcfg.oldestdate
 
     try:
-        comment_id_set = get_push_comments(appconfig.newestdate, oldestdate)
+        comment_id_set = get_push_comments(appcfg, appcfg.newestdate, oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         comment_id_set = None
         print("Connection Error for Pushshift API.  Quitting...")
@@ -700,21 +556,22 @@ def process_comments():
     if oldest_utc is not None:
         newestdate = oldest_utc  # + 1209600  # two weeks overlap, in seconds
     else:
-        newestdate = appconfig.newestdate
+        newestdate = appcfg.newestdate
+    print('---PROCESSING OLDEST PUSHSHIFT.IO COMMENTS')
 
     try:
-        old_comment_id_set = get_push_comments(newestdate, appconfig.oldestdate)
+        old_comment_id_set = get_push_comments(appcfg, newestdate, appcfg.oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         old_comment_id_set = None
         print("Connection Error for Pushshift API.  Quitting...")
         quit()
     comment_id_set |= old_comment_id_set
     filedate = arrow.now().timestamp
-    coutput_file_path = "{subreddit}_comments_{timestamp}.txt".format(subreddit=appconfig.subreddit, timestamp=filedate)
+    coutput_file_path = "{subreddit}_comments_{timestamp}.txt".format(subreddit=appcfg.subreddit, timestamp=filedate)
 
     # with open(coutput_file_path, 'w', encoding='UTF-8') as comment_file:
     #     comment_file.writelines(comment_id_set)
-    print("Total comments submitted to", appconfig.subreddit, "in set:", len(comment_id_set))
+    print("Total comments submitted to", appcfg.subreddit, "in set:", len(comment_id_set))
     deleted = Author.get_or_none(name='[deleted]')
     if deleted is not None:
         cupdatet = Comment.update(deleted=True).where(
@@ -725,17 +582,93 @@ def process_comments():
         print('Updated deleted field in comments.  Set deleted = False for', cupdatef, 'records.')
 
 
-def main():
-    process_submissions()
-    if appconfig.rsub:
-        reddit_submission_update()
-    process_comments()
-    if appconfig.rcom:
-        reddit_comment_update()
-    if appconfig.extract:
-        process_comment_urls()
+def main(appcfg):
+    process_submissions(appcfg)
+    if appcfg.rsub:
+        reddit_submission_update(appcfg)
+    process_comments(appcfg)
+    if appcfg.rcom:
+        reddit_comment_update(appcfg)
+    if appcfg.extract:
+        process_comment_urls(appcfg.database_name, 100000)
 
 
 if __name__ == '__main__':
+    # set_start_method('spawn')
     # freeze_support()
-    main()
+
+    parser = argparse.ArgumentParser(
+        description="""Subreddit Download Script""", epilog="""
+                       This program has the ability to scrape all posts and comments from a subreddit and then parse
+                       all comments for any urls.  There is no need to script loops in bash or shell for populating by date.
+                        The program will happily grab all items from the beginning of Reddit in 2006 through present.""")
+
+    parser.add_argument("subreddit", default='opendirectories', type=str,
+                        help="""The subreddit name to process.  Alternatively, you put a filename pointing to a text file 
+                        containing a list of subreddits to process but you must set the -i flag!""")
+
+    parser.add_argument("-i", "--inputfile", action='store_true',
+                        help="""A file containing a list of subreddit names to continuously scrape.  
+                        Any names added to the file while the scraper is running will be included in the follow up loop""")
+
+    parser.add_argument("-l", "--loop", action='store_true',
+                        help="""The program will continuously loop the chosen subreddit.  If a filename containing a list 
+                        of subreddits has been provided with the -i flag, the program will continously 
+                        read and scrape all the subreddits in that list""")
+
+    parser.add_argument("-s", "--rsub", action='store_true',
+                        help="""No reddit submission updates, only scrape with pushshift.io\n""")
+
+    parser.add_argument("-c", "--rcom", action='store_true',
+                        help="""No reddit comment updates, only scrape with pushshift.io\n""")
+
+    parser.add_argument("-e", "--extract", action='store_true',
+                        help="""Extract URLS from comment text. CPU INTENSIVE\n""")
+
+    parser.add_argument("-d", "--directory", help="""Database Path. Defaults to script directory.\n""")
+
+    parser.add_argument("-o", "--oldestdate", default=None, type=date_parse, help="""The earliest date for which to scrape Reddit date. 
+                                                If this date is excluded the program will start scraping from the 
+                                                beginning of Reddit. Format YYYY-MM-DD, i.e. -o 2008-12-25\n""")
+    parser.add_argument("-n", "--newestdate", default=None, type=date_parse, help="""The most recent date for which to scrape Reddit date. 
+                                                If this date is excluded the program will start scraping from this moment, 
+                                                back to the start date. Format YYYY-MM-DD, i.e. -n 2017-01-31\n""")
+
+    # this stores our application parameters so it can get passed around to functions
+    appconfig = ApplicationConfiguration()
+    cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
+    credentials = yaml.load(open(cred_path))
+    r = praw.Reddit(client_id=credentials['client_id'],
+                    client_secret=credentials['client_secret'],
+                    user_agent=credentials['user_agent'])
+    appconfig.reddit = r
+    args = parser.parse_args()
+    if args.subreddit:
+        appconfig.subreddit = args.subreddit
+
+    if args.newestdate:
+        appconfig.newestdate = args.newestdate
+
+    if args.oldestdate:
+        appconfig.oldestdate = args.oldestdate
+
+    if args.directory:
+        appconfig.base_directory = args.directory
+
+    if args.rsub:
+        appconfig.rsub = False
+
+    if args.rcom:
+        appconfig.rcom = False
+
+    if args.extract:
+        appconfig.extract = True
+
+    appconfig.database_name = "{}.db".format(appconfig.subreddit)
+    db.init(appconfig.database_name, timeout=60, pragmas=(
+        ('journal_mode', 'wal'),
+        ('cache_size', -1024 * 64)))
+    db.connect()
+    db.create_tables([AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
+                      SubmissionLinks, CommentLinks])
+    main(appconfig)

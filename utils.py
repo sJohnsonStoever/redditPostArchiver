@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from urlextract import URLExtract
 
-
 def extract_urls(body):
     urlset = set()
     extractor = URLExtract()
