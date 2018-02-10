@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 from urlextract import URLExtract
 
+
 def extract_urls(body):
     urlset = set()
     extractor = URLExtract()
-    excluded = ['.id', '.you', '.lol', '.like', '.now', '.my', '.love', '.phone', '.how', '.post', '.me']
+    excluded = ['.id', '.you', '.lol', '.like', '.now', '.my', '.love', '.phone', '.how', '.post', '.me', '.got',
+                '.hot', '.im', '.best']
     for url in extractor.gen_urls(body):
         if len(url) < 5 or '.' not in url:
             continue
@@ -27,10 +29,17 @@ def extract_urls(body):
                 url = lurl[1]
             else:
                 continue
+        sem = 0
         for suffix in excluded:
             if url.endswith(suffix):
-                continue
+                sem = 1
+        if sem == 1:
+            continue
         # """
+        if 'http://[IMG]http://' in url:
+            url = url.replace('http://[IMG]http://', '')
+        if '[/IMG]' in url:
+            url = url.replace('[/IMG]', '')
         if url.endswith('?noredirect'):
             url = url.replace('?noredirect', '')
         elif url.endswith('_d.jpg?maxwidth=640&amp;shape=thumb&amp;fidelity=medium'):
