@@ -22,6 +22,8 @@ def process_comment_urls(udbname, ulimit=100000):
     print('---EXTRACTING COMMENT URLS')
     number_of_processes = 4
     totalcompleted = 0
+    if ulimit == 0:
+        ulimit = None
     total_to_process = Comment.select().where(Comment.number_urls.is_null()).count()
     with tqdm(total=total_to_process) as pbar:
         while totalcompleted < total_to_process:
@@ -71,5 +73,5 @@ if __name__ == '__main__':
         ('cache_size', -1024 * 64)))
     db.connect()
     db.create_tables([Url, Comment, CommentLinks])
-    limit = 100000
+    limit = 0
     process_comment_urls(dbname, limit)

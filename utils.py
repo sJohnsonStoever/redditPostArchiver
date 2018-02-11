@@ -40,6 +40,8 @@ def extract_urls(body):
             url = url.replace('http://[IMG]http://', '')
         if '[/IMG]' in url:
             url = url.replace('[/IMG]', '')
+        if url.endswith('?fb'):
+            url = url.replace('?fb', '')
         if url.endswith('?noredirect'):
             url = url.replace('?noredirect', '')
         elif url.endswith('_d.jpg?maxwidth=640&amp;shape=thumb&amp;fidelity=medium'):

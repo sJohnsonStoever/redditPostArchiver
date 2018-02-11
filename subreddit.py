@@ -52,6 +52,8 @@ class ApplicationConfiguration(object):
         self.__extract = False
         self.__inputfile = None
         self.__loop = False
+        self.__sublist = list()
+        self.__database = None
 
     path_to_css = 'css/style.css'
 
@@ -62,6 +64,14 @@ class ApplicationConfiguration(object):
         self.__database_name = database_name
 
     database_name = property(get_database_name, set_database_name)
+
+    def get_database(self):
+        return self.__database
+
+    def set_database(self, database):
+        self.__database = database
+
+    database = property(get_database, set_database)
 
     def get_base_directory(self):
         return self.__base_directory
@@ -143,6 +153,14 @@ class ApplicationConfiguration(object):
 
     loop = property(get_loop, set_loop)
 
+    def get_sublist(self):
+        return self.__sublist
+
+    def set_sublist(self, sublist):
+        self.__sublist = sublist
+
+    sublist = property(get_sublist, set_sublist)
+
 
 def get_sub_post_id_set(subrd, first_id, postcount):
     sub_post_id_set = set()
@@ -171,7 +189,7 @@ def chunks(l, n):
 
 
 def reddit_submission_update(appcfg, update_length=604800):
-    print('---UPDATING SUBMISSIONS WITH DATA FROM THE REDDIT API')
+    print('     ---UPDATING SUBMISSIONS WITH DATA FROM THE REDDIT API')
     needs_update = Submission.select().where(
         (Submission.retrieved_on - Submission.created_utc) < update_length)
     needs_update_list = list()
@@ -185,10 +203,10 @@ def reddit_submission_update(appcfg, update_length=604800):
             try:
                 rd_submissions = list(r.info(nlist))
             except RequestException:
-                print("Connection Error to Reddit API. Exiting...")
+                print("     Connection Error to Reddit API. Exiting...")
                 quit()
                 return
-            with db.atomic():
+            with appcfg.database.atomic():
                 for rdsub in rd_submissions:
                     updatedtime = arrow.now().timestamp
                     if rdsub.author is None and rdsub.selftext == '[deleted]':
@@ -207,13 +225,13 @@ def reddit_submission_update(appcfg, update_length=604800):
 
 
 def reddit_comment_update(appcfg, update_length=604800):
-    print('---UPDATING COMMENTS WITH DATA FROM THE REDDIT API')
+    print('     ---UPDATING COMMENTS WITH DATA FROM THE REDDIT API')
     totalnumber = Comment.select().where(
         (Comment.retrieved_on - Comment.created_utc) < update_length).count()
     needs_update_list = list()
     needs_update = Comment.select().where(
         (Comment.retrieved_on - Comment.created_utc) < update_length)
-    print('    ---Building Task List.  This could take a while for large subreddits')
+    print('         ---Building Task List.  This could take a while for large subreddits')
 
     with tqdm(total=totalnumber) as nbar:
         for dbcomment in needs_update:
@@ -221,7 +239,7 @@ def reddit_comment_update(appcfg, update_length=604800):
             needs_update_list.append(fullname)
             nbar.update(1)
     needs_update_list = list(chunks(needs_update_list, 100))
-    print('    ---Accessing data from Reddit API and entering into database')
+    print('         ---Accessing data from Reddit API and entering into database')
     with tqdm(total=totalnumber) as pbar:
         for nlist in needs_update_list:
             try:
@@ -230,7 +248,7 @@ def reddit_comment_update(appcfg, update_length=604800):
                 print("Connection Error to Reddit API. Exiting...")
                 quit()
                 return
-            with db.atomic():
+            with appcfg.database.atomic():
                 for rdcomment in rd_comments:
                     updatedtime = arrow.now().timestamp
                     if rdcomment.author is None and rdcomment.body == '[deleted]':
@@ -267,7 +285,7 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
     with requests.get(turl) as tp:
         # newestdate = appcfg.newestdate
         if tp.status_code != 200:
-            print("Connection Error for Pushshift API, quitting...")
+            print("     Connection Error for Pushshift API, quitting...")
             quit()
         tpush = tp.json()
     try:
@@ -275,7 +293,7 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
     except KeyError:
         total_submissions = tpush['aggs']['subreddit'][0]['doc_count']
     except (IndexError, KeyError):
-        print("No new submissions to process from pushshift API")
+        print("     No new submissions to process from pushshift API")
         return push_post_id_set
     linktemplate = "https://api.pushshift.io/reddit/search/submission/?subreddit={subreddit}" \
                    "&after={oldestdate}&before={newestdate}&sort=desc&size=500"
@@ -284,12 +302,12 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
             url = linktemplate.format(subreddit=appcfg.subreddit, oldestdate=oldestdate, newestdate=newestdate)
             with requests.get(url) as rp:
                 if rp.status_code != 200:
-                    print("Connection Error for Pushshift API, quitting...")
+                    print("     Connection Error for Pushshift API, quitting...")
                     quit()
                 push = rp.json()
             subnumber = len(push['data'])
             # pbar.update(subnumber)
-            with db.atomic():
+            with appcfg.database.atomic():
                 for item in push['data']:
                     post_id = "{}\n".format(item['id'])
                     item['link_id'] = item.pop('id')
@@ -366,41 +384,89 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
                         # link_id = submission.id
                     # submission, submission_created = Submission.get_or_create(**insertdict)
                     urllist = item['url'].split()
+                    excluded = ['.id', '.you', '.lol', '.like', '.now', '.my', '.love', '.phone', '.how', '.post',
+                                '.me', '.got',
+                                '.hot', '.im', '.best']
                     for url in urllist:
-                        if url.startswith("http"):
-                            if url.endswith('?fb'):
-                                url = url.replace('?fb', '')
-                            elif url.endswith('?noredirect'):
-                                url = url.replace('?noredirect', '')
-                            elif url.endswith('_d.jpg?maxwidth=640&amp;shape=thumb&amp;fidelity=medium'):
-                                url = url.replace('_d.jpg?maxwidth=640&amp;shape=thumb&amp;fidelity=medium', '')
-                            elif url.endswith('?s=sms'):
-                                url = url.replace('?s=sms', '')
-                            if '//m.imgur.com' in url:
-                                url = url.replace('//m.imgur.com', '//imgur.com')
-                            if url.startswith('https://thumbs.gfycat.com/'):
-                                url = url.replace('https://thumbs.gfycat.com/', 'https://gfycat.com/')
-                            if url.endswith('-size_restricted.gif'):
-                                url = url.replace('-size_restricted.gif', '')
-                            if 'imgur.com' in url and ',' in url:
-                                imgurlist = url.split(',')
-                                url, urlcreated = Url.get_or_create(link=imgurlist[0])
-                                SubmissionLinks.get_or_create(post=link_id, url=url.id)
-                                for img in imgurlist[1:]:
-                                    img = "http://imgur.com/{img}".format(img=img)
-                                    url, urlcreated = Url.get_or_create(link=img)
-                                    SubmissionLinks.get_or_create(post=link_id, url=url.id)
+
+                        if len(url) < 5 or '.' not in url:
+                            continue
+                        if url.count('http') == 1:
+                            url = url.split('http')[1]
+                            url = 'http{}'.format(url)
+                        if '(' in url:
+                            rurl = url.split('(')
+                            if rurl[1].count('http') == 1:
+                                url = rurl[1]
+                            elif rurl[0].count('http') == 1:
+                                url = rurl[0]
                             else:
-                                url, urlcreated = Url.get_or_create(link=url)
-                                try:
-                                    SubmissionLinks.get_or_create(post=link_id, url=url.id)
-                                except IndexError:
-                                    print(url.id)
+                                continue
+                        if ')' in url:
+                            lurl = url.split(')')
+                            if lurl[0].count('http') == 1:
+                                url = lurl[0]
+                            elif lurl[1].count('http') == 1:
+                                url = lurl[1]
+                            else:
+                                continue
+                        sem = 0
+                        for suffix in excluded:
+                            if url.endswith(suffix):
+                                sem = 1
+                        if sem == 1:
+                            continue
+                        # """
+                        if 'http://[IMG]http://' in url:
+                            url = url.replace('http://[IMG]http://', '')
+                        if '[/IMG]' in url:
+                            url = url.replace('[/IMG]', '')
+                        if 'http://[img]http://' in url:
+                            url = url.replace('http://[img]http://', '')
+                        if '[/img]' in url:
+                            url = url.replace('[/img]', '')
+                        if url.endswith('?noredirect'):
+                            url = url.replace('?noredirect', '')
+                        elif url.endswith('_d.jpg?maxwidth=640&amp;shape=thumb&amp;fidelity=medium'):
+                            url = url.replace('_d.jpg?maxwidth=640&amp;shape=thumb&amp;fidelity=medium', '')
+                        elif url.endswith('?s=sms'):
+                            url = url.replace('?s=sms', '')
+                        if '//m.imgur.com' in url:
+                            url = url.replace('//m.imgur.com', '//imgur.com')
+                        if url.startswith('https://thumbs.gfycat.com/'):
+                            url = url.replace('https://thumbs.gfycat.com/', 'https://gfycat.com/')
+                        if url.endswith('-size_restricted.gif'):
+                            url = url.replace('-size_restricted.gif', '')
+                        # """
+                        if url.endswith('?fb'):
+                            url = url.replace('?fb', '')
+                        elif url.endswith('?noredirect'):
+                            url = url.replace('?noredirect', '')
+                        elif url.endswith('_d.jpg?maxwidth=640&amp;shape=thumb&amp;fidelity=medium'):
+                            url = url.replace('_d.jpg?maxwidth=640&amp;shape=thumb&amp;fidelity=medium', '')
+                        elif url.endswith('?s=sms'):
+                            url = url.replace('?s=sms', '')
+                        if '//m.imgur.com' in url:
+                            url = url.replace('//m.imgur.com', '//imgur.com')
+                        if url.startswith('https://thumbs.gfycat.com/'):
+                            url = url.replace('https://thumbs.gfycat.com/', 'https://gfycat.com/')
+                        if url.endswith('-size_restricted.gif'):
+                            url = url.replace('-size_restricted.gif', '')
+                        if 'imgur.com' in url and ',' in url:
+                            imgurlist = url.split(',')
+                            url, urlcreated = Url.get_or_create(link=imgurlist[0])
+                            SubmissionLinks.get_or_create(post=link_id, url=url.id)
+                            for img in imgurlist[1:]:
+                                img = "http://imgur.com/{img}".format(img=img)
+                                url, urlcreated = Url.get_or_create(link=img)
+                                SubmissionLinks.get_or_create(post=link_id, url=url.id)
+                        else:
+                            url, urlcreated = Url.get_or_create(link=url)
+                            try:
+                                SubmissionLinks.get_or_create(post=link_id, url=url.id)
+                            except IndexError:
+                                print(url.id)
             pbar.update(subnumber)
-            """
-            print("Received", subnumber, "posts from", redditsub, " -  Total posts received so far:",
-                  totalsubnumber, "with", len(push_post_id_set), "in pushshift.io set. Latest Timestamp:", enddate)
-            """
     return push_post_id_set
 
 
@@ -425,7 +491,7 @@ def get_push_comments(appcfg, newestdate, oldestdate):
     try:
         total_comments = tpush['aggs']['subreddit'][0]['doc_count']
     except (IndexError, KeyError):
-        print("No new comments to process from pushshift API")
+        print("     No new comments to process from pushshift API for", appcfg.subreddit)
         return push_comment_id_set
     linktemplate = "https://api.pushshift.io/reddit/search/comment/?subreddit={subreddit}" \
                    "&after={oldestdate}&before={newestdate}&sort=desc&size=500"
@@ -436,12 +502,12 @@ def get_push_comments(appcfg, newestdate, oldestdate):
                 try:
                     push = rp.json()
                 except JSONDecodeError:
-                    print("JSON DECODE ERROR on Pushshift API Comments", url)
+                    print("     JSON DECODE ERROR on Pushshift API Comments", url)
                     return push_comment_id_set
             subnumber = len(push['data'])
             totalsubnumber += subnumber
             commentlinktemplate = 'https://www.reddit.com/comments/{link_id}/_/{comment_id}/.json\n'
-            with db.atomic():
+            with appcfg.database.atomic():
                 for item in push['data']:
                     try:
                         item['comment_id'] = item.pop('id')
@@ -474,7 +540,7 @@ def get_push_comments(appcfg, newestdate, oldestdate):
 
 def process_submissions(appcfg):
     # Get newest submissions with two week overlap
-    print('---PROCESSING NEWEST PUSHSHIFT.IO SUBMISSIONS')
+    print('     ---PROCESSING NEWEST PUSHSHIFT.IO SUBMISSIONS FOR', appcfg.subreddit)
 
     try:
         newest_utc = int(Submission.select(fn.MAX(Submission.created_utc)).scalar().timestamp())
@@ -489,7 +555,7 @@ def process_submissions(appcfg):
         post_id_set = get_push_submissions(appcfg, appcfg.newestdate, oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         post_id_set = None
-        print("Connection Error for Pushshift API.  Quitting...")
+        print("     Connection Error for Pushshift API.  Quitting...")
         quit()
 
     # Get oldest submissions in case progress was interrupted, with four week overlap
@@ -501,13 +567,13 @@ def process_submissions(appcfg):
         newestdate = oldest_utc  # + 2400000  # four week overlap, in seconds
     else:
         newestdate = appcfg.newestdate
-    print('---PROCESSING OLDEST PUSHSHIFT.IO SUBMISSIONS')
+    print('     ---PROCESSING OLDEST PUSHSHIFT.IO SUBMISSIONS FOR', appcfg.subreddit)
 
     try:
         old_post_id_set = get_push_submissions(appcfg, newestdate, appcfg.oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         old_post_id_set = None
-        print("Connection Error for Pushshift API.  Quitting...")
+        print("     Connection Error for Pushshift API.  Quitting...")
         quit()
 
     post_id_set |= old_post_id_set
@@ -517,20 +583,20 @@ def process_submissions(appcfg):
     # with open(output_file_path, 'w', encoding='UTF-8') as post_file:
     #     post_file.writelines(post_id_set)
 
-    print("Total posts submitted to", appcfg.subreddit, "in set:", len(post_id_set))
+    print("     Total posts submitted to", appcfg.subreddit, "in set:", len(post_id_set))
     deleted = Author.get_or_none(name='[deleted]')
     if deleted is not None:
         supdatet = Submission.update(deleted=True).where(
             (Submission.author == deleted.id) & (Submission.deleted.is_null() or Submission.deleted == 0)).execute()
-        print('Updated deleted field in submissions.  Set deleted = True for', supdatet, 'records.')
+        print('     Updated deleted field in submissions.  Set deleted = True for', supdatet, 'records.')
         supdatef = Submission.update(deleted=False).where(
             (Submission.author != deleted.id) & (Submission.deleted.is_null())).execute()
-        print('Updated deleted field in submissions.  Set deleted = False for', supdatef, 'records.')
+        print('     Updated deleted field in submissions.  Set deleted = False for', supdatef, 'records.')
 
 
 def process_comments(appcfg):
     # Get newest comments with two week overlap
-    print('---PROCESSING NEWEST PUSHSHIFT.IO COMMENTS')
+    print('     ---PROCESSING NEWEST PUSHSHIFT.IO COMMENTS FOR', appcfg.subreddit)
 
     try:
         newest_utc = int(Comment.select(fn.MAX(Comment.created_utc)).scalar().timestamp())
@@ -545,7 +611,7 @@ def process_comments(appcfg):
         comment_id_set = get_push_comments(appcfg, appcfg.newestdate, oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         comment_id_set = None
-        print("Connection Error for Pushshift API.  Quitting...")
+        print("     Connection Error for Pushshift API.  Quitting...")
         quit()
 
     # Get oldest comments in case progress was interrupted, with two week overlap
@@ -557,13 +623,13 @@ def process_comments(appcfg):
         newestdate = oldest_utc  # + 1209600  # two weeks overlap, in seconds
     else:
         newestdate = appcfg.newestdate
-    print('---PROCESSING OLDEST PUSHSHIFT.IO COMMENTS')
+    print('     ---PROCESSING OLDEST PUSHSHIFT.IO COMMENTS FOR', appcfg.subreddit)
 
     try:
         old_comment_id_set = get_push_comments(appcfg, newestdate, appcfg.oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         old_comment_id_set = None
-        print("Connection Error for Pushshift API.  Quitting...")
+        print("     Connection Error for Pushshift API.  Quitting...")
         quit()
     comment_id_set |= old_comment_id_set
     filedate = arrow.now().timestamp
@@ -571,26 +637,49 @@ def process_comments(appcfg):
 
     # with open(coutput_file_path, 'w', encoding='UTF-8') as comment_file:
     #     comment_file.writelines(comment_id_set)
-    print("Total comments submitted to", appcfg.subreddit, "in set:", len(comment_id_set))
+    print("     Total comments submitted to", appcfg.subreddit, "in set:", len(comment_id_set))
     deleted = Author.get_or_none(name='[deleted]')
     if deleted is not None:
         cupdatet = Comment.update(deleted=True).where(
             (Comment.author == deleted.id) & (Comment.deleted.is_null() or Comment.deleted == 0)).execute()
-        print('Updated deleted field in comments.  Set deleted = True for', cupdatet, 'records.')
+        print('     Updated deleted field in comments.  Set deleted = True for', cupdatet, 'records.')
         cupdatef = Comment.update(deleted=False).where(
             (Comment.author != deleted.id) & (Comment.deleted.is_null())).execute()
-        print('Updated deleted field in comments.  Set deleted = False for', cupdatef, 'records.')
+        print('     Updated deleted field in comments.  Set deleted = False for', cupdatef, 'records.')
 
 
 def main(appcfg):
-    process_submissions(appcfg)
-    if appcfg.rsub:
-        reddit_submission_update(appcfg)
-    process_comments(appcfg)
-    if appcfg.rcom:
-        reddit_comment_update(appcfg)
-    if appcfg.extract:
-        process_comment_urls(appcfg.database_name, 100000)
+    doloop = True
+    while doloop:
+        appcfg.sublist = list()
+        if appcfg.inputfile is not None:
+            with open(appcfg.inputfile, 'r', encoding='UTF-8') as ipfile:
+                for ipline in ipfile:
+                    appcfg.sublist.append(ipline.rstrip())
+        else:
+            appcfg.sublist.append(appcfg.subreddit)
+
+        for subreddit in appcfg.sublist:
+            print("##############  Now Processing", subreddit, "  #####################")
+            appcfg.subreddit = subreddit
+            appcfg.database_name = "{}.db".format(appconfig.subreddit)
+            appcfg.database = db
+            appcfg.database.init(appcfg.database_name, timeout=60, pragmas=(
+                ('journal_mode', 'wal'),
+                ('cache_size', -1024 * 64)))
+            appcfg.database.connect()
+            appcfg.database.create_tables(
+                [AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
+                 SubmissionLinks, CommentLinks])
+            process_submissions(appcfg)
+            if appcfg.rsub:
+                reddit_submission_update(appcfg)
+            process_comments(appcfg)
+            if appcfg.rcom:
+                reddit_comment_update(appcfg)
+            if appcfg.extract:
+                process_comment_urls(appcfg.database_name, 0)
+        doloop = appcfg.loop
 
 
 if __name__ == '__main__':
@@ -664,11 +753,12 @@ if __name__ == '__main__':
     if args.extract:
         appconfig.extract = True
 
-    appconfig.database_name = "{}.db".format(appconfig.subreddit)
-    db.init(appconfig.database_name, timeout=60, pragmas=(
-        ('journal_mode', 'wal'),
-        ('cache_size', -1024 * 64)))
-    db.connect()
-    db.create_tables([AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
-                      SubmissionLinks, CommentLinks])
-    main(appconfig)
+    if args.loop:
+        appconfig.loop = True
+
+    if args.inputfile:
+        appconfig.inputfile = args.subreddit
+    try:
+        main(appconfig)
+    except KeyboardInterrupt:
+        quit()
