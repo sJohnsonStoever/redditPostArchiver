@@ -347,8 +347,10 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
                         if key in itemfields:
                             insertdict[key] = item[key]
                     if 'thumbnail' in insertdict.keys():
-                        if not insertdict['thumbnail'].startswith('http'):
+                        if insertdict['thumbnail'] is not None and not insertdict['thumbnail'].startswith('http'):
                             insertdict['thumbnail'] = None
+                        elif insertdict['thumbnail'] is None:
+                            pass
                         else:
                             try:
                                 thumb, thumbcreated = Url.get_or_create(link=insertdict['thumbnail'])
@@ -509,14 +511,18 @@ def get_push_comments(appcfg, newestdate, oldestdate):
             commentlinktemplate = 'https://www.reddit.com/comments/{link_id}/_/{comment_id}/.json\n'
             with appcfg.database.atomic():
                 for item in push['data']:
-                    try:
+                    if 'id' not in item.keys():
+                        print('The following item has no primary comment ID:', item)
+                        continue
+                    else:
                         item['comment_id'] = item.pop('id')
+                    try:
                         link_id = item['link_id']
                         item['link_id'] = link_id.replace('t3_', '')
                         commentlink = commentlinktemplate.format(link_id=item['link_id'], comment_id=item['comment_id'])
                         push_comment_id_set.add(commentlink)
                     except KeyError:
-                        print('Key Error on item:', item)
+                        print('The following item has no submission link ID:', item)
                         continue
                     if item['created_utc'] < newestdate:
                         newestdate = item['created_utc']
@@ -678,7 +684,7 @@ def main(appcfg):
             if appcfg.rcom:
                 reddit_comment_update(appcfg)
             if appcfg.extract:
-                process_comment_urls(appcfg.database_name, 0)
+                process_comment_urls(db, 0, 4)
         doloop = appcfg.loop
 
 

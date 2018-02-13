@@ -36,10 +36,16 @@ def extract_urls(body):
         if sem == 1:
             continue
         # """
-        if 'http://[IMG]http://' in url:
-            url = url.replace('http://[IMG]http://', '')
+        if '[IMG]' in url:
+            try:
+                url = url.split('[IMG]')[1]
+            except IndexError:
+                pass
         if '[/IMG]' in url:
-            url = url.replace('[/IMG]', '')
+            try:
+                url = url.split('[/IMG]')[0]
+            except IndexError:
+                pass
         if url.endswith('?fb'):
             url = url.replace('?fb', '')
         if url.endswith('?noredirect'):

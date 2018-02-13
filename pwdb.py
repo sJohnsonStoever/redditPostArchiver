@@ -132,7 +132,7 @@ class Comment(BaseModel):
     score = IntegerField(default=0, null=True)
     stickied = BooleanField(default=None, null=True)
     subreddit = ForeignKeyField(Subreddit, backref='comment')
-    number_urls = IntegerField(default=None, null=True)
+    number_urls = IntegerField(default=None, null=True, index=True)
     deleted = BooleanField(default=None, null=True, index=True)
 
 
