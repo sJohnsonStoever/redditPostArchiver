@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import time
 
 import arrow
 import praw
@@ -198,13 +199,13 @@ def reddit_submission_update(appcfg, update_length=604800):
         needs_update_list.append(fullname)
     totalnumber = len(needs_update_list)
     needs_update_list = list(chunks(needs_update_list, 100))
-    with tqdm(total=totalnumber) as pbar:
+    with tqdm(total=totalnumber, ncols=100, dynamic_ncols=False) as pbar:
         for nlist in needs_update_list:
             try:
                 rd_submissions = list(r.info(nlist))
             except RequestException:
                 print("     Connection Error to Reddit API. Exiting...")
-                quit()
+                # quit()
                 return
             with appcfg.database.atomic():
                 for rdsub in rd_submissions:
@@ -233,20 +234,20 @@ def reddit_comment_update(appcfg, update_length=604800):
         (Comment.retrieved_on - Comment.created_utc) < update_length)
     print('         ---Building Task List.  This could take a while for large subreddits')
 
-    with tqdm(total=totalnumber) as nbar:
+    with tqdm(total=totalnumber, ncols=100, dynamic_ncols=False) as nbar:
         for dbcomment in needs_update:
             fullname = "t1_{}".format(dbcomment.comment_id)
             needs_update_list.append(fullname)
             nbar.update(1)
     needs_update_list = list(chunks(needs_update_list, 100))
     print('         ---Accessing data from Reddit API and entering into database')
-    with tqdm(total=totalnumber) as pbar:
+    with tqdm(total=totalnumber, ncols=100, dynamic_ncols=False) as pbar:
         for nlist in needs_update_list:
             try:
                 rd_comments = list(r.info(nlist))
             except RequestException:
                 print("Connection Error to Reddit API. Exiting...")
-                quit()
+                # quit()
                 return
             with appcfg.database.atomic():
                 for rdcomment in rd_comments:
@@ -286,7 +287,8 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
         # newestdate = appcfg.newestdate
         if tp.status_code != 200:
             print("     Connection Error for Pushshift API, quitting...")
-            quit()
+            # quit()
+            return push_post_id_set
         tpush = tp.json()
     try:
         total_submissions = tpush['aggs']['subreddit'][0]['bg_count']
@@ -297,13 +299,14 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
         return push_post_id_set
     linktemplate = "https://api.pushshift.io/reddit/search/submission/?subreddit={subreddit}" \
                    "&after={oldestdate}&before={newestdate}&sort=desc&size=500"
-    with tqdm(total=total_submissions) as pbar:
+    with tqdm(total=total_submissions, ncols=100, dynamic_ncols=False) as pbar:
         while subnumber > 0:
             url = linktemplate.format(subreddit=appcfg.subreddit, oldestdate=oldestdate, newestdate=newestdate)
             with requests.get(url) as rp:
                 if rp.status_code != 200:
                     print("     Connection Error for Pushshift API, quitting...")
-                    quit()
+                    # quit()
+                    return push_post_id_set
                 push = rp.json()
             subnumber = len(push['data'])
             # pbar.update(subnumber)
@@ -467,7 +470,7 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
                             try:
                                 SubmissionLinks.get_or_create(post=link_id, url=url.id)
                             except IndexError:
-                                print(url.id)
+                                print("IndexError when attempting to parse submission:", url.id)
             pbar.update(subnumber)
     return push_post_id_set
 
@@ -488,7 +491,8 @@ def get_push_comments(appcfg, newestdate, oldestdate):
     with requests.get(turl) as tp:
         if tp.status_code != 200:
             print("Connection Error for Pushshift API, quitting...")
-            quit()
+            # quit()
+            return push_comment_id_set
         tpush = tp.json()
     try:
         total_comments = tpush['aggs']['subreddit'][0]['doc_count']
@@ -497,7 +501,7 @@ def get_push_comments(appcfg, newestdate, oldestdate):
         return push_comment_id_set
     linktemplate = "https://api.pushshift.io/reddit/search/comment/?subreddit={subreddit}" \
                    "&after={oldestdate}&before={newestdate}&sort=desc&size=500"
-    with tqdm(total=total_comments) as pbar:
+    with tqdm(total=total_comments, ncols=100, dynamic_ncols=False) as pbar:
         while subnumber > 0:
             url = linktemplate.format(subreddit=appcfg.subreddit, oldestdate=oldestdate, newestdate=newestdate)
             with requests.get(url) as rp:
@@ -505,7 +509,9 @@ def get_push_comments(appcfg, newestdate, oldestdate):
                     push = rp.json()
                 except JSONDecodeError:
                     print("     JSON DECODE ERROR on Pushshift API Comments", url)
-                    return push_comment_id_set
+                    time.sleep(10)
+                    continue
+                    # return push_comment_id_set
             subnumber = len(push['data'])
             totalsubnumber += subnumber
             commentlinktemplate = 'https://www.reddit.com/comments/{link_id}/_/{comment_id}/.json\n'
@@ -546,7 +552,7 @@ def get_push_comments(appcfg, newestdate, oldestdate):
 
 def process_submissions(appcfg):
     # Get newest submissions with two week overlap
-    print('     ---PROCESSING NEWEST PUSHSHIFT.IO SUBMISSIONS FOR', appcfg.subreddit)
+    print('   PROCESSING NEWEST PUSHSHIFT.IO SUBMISSIONS FOR', appcfg.subreddit)
 
     try:
         newest_utc = int(Submission.select(fn.MAX(Submission.created_utc)).scalar().timestamp())
@@ -562,7 +568,8 @@ def process_submissions(appcfg):
     except (ConnectionError, SSLError, ChunkedEncodingError):
         post_id_set = None
         print("     Connection Error for Pushshift API.  Quitting...")
-        quit()
+        # quit()
+        return post_id_set
 
     # Get oldest submissions in case progress was interrupted, with four week overlap
     try:
@@ -573,14 +580,15 @@ def process_submissions(appcfg):
         newestdate = oldest_utc  # + 2400000  # four week overlap, in seconds
     else:
         newestdate = appcfg.newestdate
-    print('     ---PROCESSING OLDEST PUSHSHIFT.IO SUBMISSIONS FOR', appcfg.subreddit)
+    print('   PROCESSING OLDEST PUSHSHIFT.IO SUBMISSIONS FOR', appcfg.subreddit)
 
     try:
         old_post_id_set = get_push_submissions(appcfg, newestdate, appcfg.oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         old_post_id_set = None
         print("     Connection Error for Pushshift API.  Quitting...")
-        quit()
+        # quit()
+        return old_post_id_set
 
     post_id_set |= old_post_id_set
     filedate = arrow.now().timestamp
@@ -594,15 +602,15 @@ def process_submissions(appcfg):
     if deleted is not None:
         supdatet = Submission.update(deleted=True).where(
             (Submission.author == deleted.id) & (Submission.deleted.is_null() or Submission.deleted == 0)).execute()
-        print('     Updated deleted field in submissions.  Set deleted = True for', supdatet, 'records.')
+        print('     Updated deleted field in submissions.  Set deleted = True for ', supdatet, ' records.')
         supdatef = Submission.update(deleted=False).where(
             (Submission.author != deleted.id) & (Submission.deleted.is_null())).execute()
-        print('     Updated deleted field in submissions.  Set deleted = False for', supdatef, 'records.')
+        print('     Updated deleted field in submissions.  Set deleted = False for ', supdatef, ' records.')
 
 
 def process_comments(appcfg):
     # Get newest comments with two week overlap
-    print('     ---PROCESSING NEWEST PUSHSHIFT.IO COMMENTS FOR', appcfg.subreddit)
+    print('   PROCESSING NEWEST PUSHSHIFT.IO COMMENTS FOR', appcfg.subreddit)
 
     try:
         newest_utc = int(Comment.select(fn.MAX(Comment.created_utc)).scalar().timestamp())
@@ -618,7 +626,8 @@ def process_comments(appcfg):
     except (ConnectionError, SSLError, ChunkedEncodingError):
         comment_id_set = None
         print("     Connection Error for Pushshift API.  Quitting...")
-        quit()
+        # quit()
+        return comment_id_set
 
     # Get oldest comments in case progress was interrupted, with two week overlap
     try:
@@ -629,14 +638,15 @@ def process_comments(appcfg):
         newestdate = oldest_utc  # + 1209600  # two weeks overlap, in seconds
     else:
         newestdate = appcfg.newestdate
-    print('     ---PROCESSING OLDEST PUSHSHIFT.IO COMMENTS FOR', appcfg.subreddit)
+    print('   PROCESSING OLDEST PUSHSHIFT.IO COMMENTS FOR', appcfg.subreddit)
 
     try:
         old_comment_id_set = get_push_comments(appcfg, newestdate, appcfg.oldestdate)
     except (ConnectionError, SSLError, ChunkedEncodingError):
         old_comment_id_set = None
         print("     Connection Error for Pushshift API.  Quitting...")
-        quit()
+        # quit()
+        return old_comment_id_set
     comment_id_set |= old_comment_id_set
     filedate = arrow.now().timestamp
     coutput_file_path = "{subreddit}_comments_{timestamp}.txt".format(subreddit=appcfg.subreddit, timestamp=filedate)
@@ -656,7 +666,9 @@ def process_comments(appcfg):
 
 def main(appcfg):
     doloop = True
+    loopcounter = 0
     while doloop:
+        loopbegintime = arrow.now()
         appcfg.sublist = list()
         if appcfg.inputfile is not None:
             with open(appcfg.inputfile, 'r', encoding='UTF-8') as ipfile:
@@ -666,13 +678,16 @@ def main(appcfg):
             appcfg.sublist.append(appcfg.subreddit)
 
         for subreddit in appcfg.sublist:
+            begintime = arrow.now()
             print("##############  Now Processing", subreddit, "  #####################")
             appcfg.subreddit = subreddit
             appcfg.database_name = "{}.db".format(appconfig.subreddit)
             appcfg.database = db
             appcfg.database.init(appcfg.database_name, timeout=60, pragmas=(
                 ('journal_mode', 'wal'),
-                ('cache_size', -1024 * 64)))
+                ('page_size', 4096),
+                ('temp_store', 'memory'),
+                ('synchronous', 'off')))
             appcfg.database.connect()
             appcfg.database.create_tables(
                 [AuthorFlair, Author, Url, Domain, Subreddit, Submission, SubmissionCommentIDs, Comment,
@@ -685,7 +700,14 @@ def main(appcfg):
                 reddit_comment_update(appcfg)
             if appcfg.extract:
                 process_comment_urls(db, 0, 4)
+            donetime = arrow.now()
+            print("##############  Finished Processing", subreddit, "  #####################")
+            print("############## Total Elapsed:", donetime.humanize(begintime, only_distance=True), "#####################\n\n")
         doloop = appcfg.loop
+        loopcounter += 1
+        loopendtime = arrow.now()
+        loopelapsed = loopbegintime - loopendtime
+        print("\n\n##############  COMPLETED LOOP NUMBER:", loopcounter, " Total Elapsed:", loopendtime.humanize(loopbegintime, only_distance=True), "#####################\n\n")
 
 
 if __name__ == '__main__':
