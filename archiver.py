@@ -150,6 +150,9 @@ def parse_comment(reddit_comment, post_author_name, post_author_exists, is_root=
     html_file.write(str(post_date.tm_min) + ' UTC on ')
     html_file.write(monthsList[post_date.tm_mon - 1] + ' ')
     html_file.write(str(post_date.tm_mday) + ', ' + str(post_date.tm_year))
+        html_file.write('<a href=https://www.reddit.com')
+    html_file.write(reddit_comment.permalink)
+    html_file.write("> (Permalink) </a>")
     html_file.write('</em></div>\n')
     if reddit_comment.body_html:
         html_file.write(reddit_comment.body_html)
