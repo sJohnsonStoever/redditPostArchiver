@@ -183,6 +183,8 @@ if bulk_ids:
             the_post = r.submission(id=post_id)
             with open(output_file_path, 'w', encoding='UTF-8') as html_file:
                 parse_post(the_post)
+        except NotFound:
+            print('User not found with Reddit API.  Most likely deleted.')
         except HTTPError:
             print('Unable to Archive Post: Invalid PostID or Log In Required (see line 157 of script)')
 else:
