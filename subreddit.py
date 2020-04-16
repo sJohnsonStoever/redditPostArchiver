@@ -46,7 +46,7 @@ class ApplicationConfiguration(object):
         self.__base_directory = ''
         self.__subreddit = 'deepfakes'
         self.__reddit = None
-        self.__oldestdate = arrow.get('2005-06-23', 'YYYY-MM').timestamp
+        self.__oldestdate = arrow.get('2005-06-23', 'YYYY-MM-DD').timestamp
         self.__newestdate = arrow.now().timestamp
         self.__rsub = True
         self.__rcom = True
@@ -754,7 +754,7 @@ if __name__ == '__main__':
     # this stores our application parameters so it can get passed around to functions
     appconfig = ApplicationConfiguration()
     cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
-    credentials = yaml.load(open(cred_path))
+    credentials = yaml.safe_load(open(cred_path))
     r = praw.Reddit(client_id=credentials['client_id'],
                     client_secret=credentials['client_secret'],
                     user_agent=credentials['user_agent'])
