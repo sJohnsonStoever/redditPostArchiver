@@ -46,7 +46,7 @@ class ApplicationConfiguration(object):
         self.__base_directory = ''
         self.__subreddit = 'deepfakes'
         self.__reddit = None
-        self.__oldestdate = arrow.get('2005-06-23', 'YYYY-MM').timestamp
+        self.__oldestdate = arrow.get('2005-06-23', 'YYYY-MM-DD').timestamp
         self.__newestdate = arrow.now().timestamp
         self.__rsub = True
         self.__rcom = True
@@ -204,7 +204,7 @@ def reddit_submission_update(appcfg, update_length=604800):
             try:
                 rd_submissions = list(r.info(nlist))
             except RequestException:
-                print("     Connection Error to Reddit API. Exiting...")
+                print("     Connection Error to Reddit API (Check your credentials.yml?). Exiting...")
                 # quit()
                 return
             with appcfg.database.atomic():
@@ -330,6 +330,9 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
                         item['media'] = media.id
                     except KeyError:
                         item['media'] = None
+                    except TypeError as e:
+                       if not item["media"] == None:
+                           raise e
                     try:
                         domain, domaincreated = Domain.get_or_create(value=item['domain'])
                         item['domain'] = domain.id
@@ -754,7 +757,7 @@ if __name__ == '__main__':
     # this stores our application parameters so it can get passed around to functions
     appconfig = ApplicationConfiguration()
     cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
-    credentials = yaml.load(open(cred_path))
+    credentials = yaml.safe_load(open(cred_path))
     r = praw.Reddit(client_id=credentials['client_id'],
                     client_secret=credentials['client_secret'],
                     user_agent=credentials['user_agent'])

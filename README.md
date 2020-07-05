@@ -20,20 +20,15 @@
 
 ## Quick Start ##
 
-As a regular user, install:
+As a regular user, install ([preferably without sudo](https://askubuntu.com/a/802594)):
 
-    sudo pip3 install requests
-    sudo pip3 install praw
-    sudo pip3 install pyyaml
-    sudo pip3 install arrow
+    pip3 install --user requests praw pyyaml arrow
 
 If you want to run the subreddit database script, you must also install apsw, peewee, urlextract, and tqdm:
-For those running windows, grab APSW from [Christoph Gohlke's page](https://www.lfd.uci.edu/~gohlke/pythonlibs/#apsw) as it may not install from pip.  You may also have to [grab Peewee from the same page](https://www.lfd.uci.edu/~gohlke/pythonlibs/#peewee) if it doesn't install from pip.
+For those running windows, grab APSW from [Christoph Gohlke's page](https://www.lfd.uci.edu/~gohlke/pythonlibs/#apsw) as it may not install from pip.  You may also have to [grab Peewee from the same page](https://www.lfd.uci.edu/~gohlke/pythonlibs/#peewee) if it doesn't install from pip. I recommend installing the newest version of URLExtract directly from the developers GitHub to avoid an error with url processing.
 
-    sudo pip3 install apsw
-    sudo pip3 install peewee
-    sudo pip3 install urlextract
-    sudo pip3 install tqdm
+    pip3 install --user apsw peewee tqdm
+    pip3 install --user git+https://github.com/lipoja/URLExtract.git
 
 Visit the PRAW documentation and follow the instructions for a script installation:
 
