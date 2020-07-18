@@ -44,9 +44,9 @@ and grab your client ID and client secret from the app page:
 
 Edit the included "credentials.yml" file to replace "test" with the variables from your reddit account.
 
-#### archive.py ####
+#### archiver.py ####
 
-Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `python archiver.py 15zmjl`).
+Navigate to the folder with archiver.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `python archiver.py 15zmjl`).
 If you've used the 'postids.py' program below and generated a text file of reddit submission ids, you can bulk process them with the command `python archiver.py -i <filename>`, i.e. `python archiver.py -i GallowBoob_1517981182.txt`).
 
 The output is a webpage that looks like this:
@@ -64,7 +64,18 @@ Navigate to the folder with subpostids.py and run the script. A CSV file will be
 
 #### subreddit.py ####
 
-NEW!!! Run `subreddit.py <subredditname>` and it will grab every submission and comment from that subreddit and store it in a sqlite database.  Furthermore, it will then parse all of the text in the comment bodies for an possible URL. if you rerun the script, it will avoid redownloading any comments or scripts so you can keep it updated.
+NEW!!! Run `subreddit.py <subredditname>` and it will grab every submission and comment from that subreddit and store it in a sqlite database. Furthermore, it will then parse all of the text in the comment bodies for a possible URL. if you rerun the script, it will avoid redownloading any comments or scripts so you can keep it updated.
+
+### Quickly get started with the redditPostArchiver Docker image
+
+You can run scripts by specifying the script name (with or without `.py`) and arguments. All output files will be at `/rpa` in the container. The credentials are passed through the environment variables `CLIENT_ID` and `CLIENT_SECRET`.
+
+#### Running Example
+
+`docker run -it --rm -e CLIENT_ID=YOUR_CLIENT_ID -e CLIENT_SECRET=YOUR_CLIENT_SECRET -v $(pwd)/rpa:/rpa yardenshoham/reddit-post-archiver postids GallowBoob`
+
+When it is done running, the `.txt` file will be in `$(pwd)/rpa`.
+
 
 ## Motivation ##
 

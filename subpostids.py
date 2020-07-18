@@ -126,7 +126,8 @@ def main():
     print("Total posts submitted to", subreddit, "in set:", len(post_id_set))
 
     filedate = arrow.now().timestamp
-    output_file_path = "{subreddit}_{timestamp}.csv".format(subreddit=subreddit, timestamp=filedate)
+    basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+    output_file_path = "{basedir}/{subreddit}_{timestamp}.csv".format(basedir=basedir, subreddit=subreddit, timestamp=filedate)
 
     with open(output_file_path, 'w', encoding='UTF-8') as post_file:
         post_file.writelines(post_id_set)
