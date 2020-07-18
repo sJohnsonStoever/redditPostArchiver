@@ -164,7 +164,7 @@ def parse_comment(reddit_comment, post_author_name, post_author_exists, is_root=
 
 
 cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
-credentials = yaml.load(open(cred_path))
+credentials = yaml.load(open(cred_path), Loader=yaml.SafeLoader)
 
 r = praw.Reddit(client_id=credentials['client_id'],
                 client_secret=credentials['client_secret'],

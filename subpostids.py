@@ -33,7 +33,7 @@ else:
     subreddit = sys.argv[1]
 
 cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
-credentials = yaml.load(open(cred_path))
+credentials = yaml.load(open(cred_path), Loader=yaml.SafeLoader)
 
 r = praw.Reddit(client_id=credentials['client_id'],
                 client_secret=credentials['client_secret'],
