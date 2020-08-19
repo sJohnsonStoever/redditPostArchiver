@@ -164,7 +164,7 @@ def parse_comment(reddit_comment, post_author_name, post_author_exists, is_root=
 
 
 cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
-credentials = yaml.load(open(cred_path))
+credentials = yaml.load(open(cred_path), Loader=yaml.SafeLoader)
 
 r = praw.Reddit(client_id=credentials['client_id'],
                 client_secret=credentials['client_secret'],
@@ -178,7 +178,8 @@ if bulk_ids:
             id_list.append(pid.rstrip())
     for post_id in id_list:
         filedate = arrow.now().timestamp
-        output_file_path = "{post_id}_{timestamp}.html".format(post_id=post_id, timestamp=filedate)
+        basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+        output_file_path = "{basedir}/{post_id}_{timestamp}.html".format(basedir=basedir, post_id=post_id, timestamp=filedate)
         try:
             the_post = r.submission(id=post_id)
             with open(output_file_path, 'w', encoding='UTF-8') as html_file:
@@ -189,7 +190,8 @@ if bulk_ids:
             print('Unable to Archive Post: Invalid PostID or Log In Required (see line 157 of script)')
 else:
     filedate = arrow.now().timestamp
-    output_file_path = "{post_id}_{timestamp}.html".format(post_id=post_id, timestamp=filedate)
+    basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+    output_file_path = "{basedir}/{post_id}_{timestamp}.html".format(basedir=basedir, post_id=post_id, timestamp=filedate)
 
     try:
         the_post = r.submission(id=post_id)

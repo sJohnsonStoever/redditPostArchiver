@@ -40,7 +40,7 @@ elif '/user/' in username:
 
 print('Processing all posts submitted by', username)
 cred_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.yml')
-credentials = yaml.load(open(cred_path))
+credentials = yaml.load(open(cred_path), Loader=yaml.SafeLoader)
 
 r = praw.Reddit(client_id=credentials['client_id'],
                 client_secret=credentials['client_secret'],
@@ -136,7 +136,8 @@ def main():
     print("Total posts submitted by", username, "in set:", len(post_id_set))
 
     filedate = arrow.now().timestamp
-    output_file_path = "{username}_{timestamp}.txt".format(username=username, timestamp=filedate)
+    basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+    output_file_path = "{basedir}/{username}_{timestamp}.txt".format(basedir=basedir, username=username, timestamp=filedate)
 
     with open(output_file_path, 'w', encoding='UTF-8') as post_file:
         post_file.writelines(post_id_set)

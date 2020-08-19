@@ -68,7 +68,8 @@ def process_comment_urls(udb, ulimit=100000, number_of_processes=4):
     """
     print('Writing new database file')
     now = arrow.now().timestamp
-    newdbname = "{s}_{t}.db".format(s=subred, t=now)
+    basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+    newdbname = "{basedir}/{s}_{t}.db".format(basedir=basedir, s=subred, t=now)
     filecon = Connection(newdbname)
     newmem_uri = 'file:memdb?mode=memory&cache=shared'
     newmemcon = Connection(newmem_uri)
@@ -124,7 +125,8 @@ if __name__ == '__main__':
         sublist.append(subreddit)
     for subreddit in sublist:
         print('############   PROCESSING', subreddit, '    #############')
-        mem_uri = "{}.db".format(subreddit)
+        basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+        mem_uri = basedir + "{}.db".format(subreddit)
         """
         diskcon = Connection(mem_uri)
         mem_uri = 'file:memdb?mode=memory&cache=shared'

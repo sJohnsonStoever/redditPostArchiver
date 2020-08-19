@@ -595,7 +595,8 @@ def process_submissions(appcfg):
 
     post_id_set |= old_post_id_set
     filedate = arrow.now().timestamp
-    output_file_path = "{subreddit}_{timestamp}.csv".format(subreddit=appcfg.subreddit, timestamp=filedate)
+    basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+    output_file_path = "{basedir}/{subreddit}_{timestamp}.csv".format(basedir=basedir, subreddit=appcfg.subreddit, timestamp=filedate)
 
     # with open(output_file_path, 'w', encoding='UTF-8') as post_file:
     #     post_file.writelines(post_id_set)
@@ -652,7 +653,8 @@ def process_comments(appcfg):
         return old_comment_id_set
     comment_id_set |= old_comment_id_set
     filedate = arrow.now().timestamp
-    coutput_file_path = "{subreddit}_comments_{timestamp}.txt".format(subreddit=appcfg.subreddit, timestamp=filedate)
+    basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+    coutput_file_path = "{basedir}/{subreddit}_comments_{timestamp}.txt".format(basedir=basedir, subreddit=appcfg.subreddit, timestamp=filedate)
 
     # with open(coutput_file_path, 'w', encoding='UTF-8') as comment_file:
     #     comment_file.writelines(comment_id_set)
@@ -684,7 +686,8 @@ def main(appcfg):
             begintime = arrow.now()
             print("##############  Now Processing", subreddit, "  #####################")
             appcfg.subreddit = subreddit
-            appcfg.database_name = "{}.db".format(appconfig.subreddit)
+            basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
+            appcfg.database_name = basedir + "{}.db".format(appconfig.subreddit)
             appcfg.database = db
             appcfg.database.init(appcfg.database_name, timeout=60, pragmas=(
                 ('journal_mode', 'wal'),
@@ -745,7 +748,7 @@ if __name__ == '__main__':
     parser.add_argument("-e", "--extract", action='store_true',
                         help="""Extract URLS from comment text. CPU INTENSIVE\n""")
 
-    parser.add_argument("-d", "--directory", help="""Database Path. Defaults to script directory.\n""")
+    parser.add_argument("-d", "--directory", help="""Database Path. Defaults to script directory normally or /rpa in Docker.\n""")
 
     parser.add_argument("-o", "--oldestdate", default=None, type=date_parse, help="""The earliest date for which to scrape Reddit date. 
                                                 If this date is excluded the program will start scraping from the 
