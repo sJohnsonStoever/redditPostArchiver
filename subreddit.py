@@ -46,8 +46,8 @@ class ApplicationConfiguration(object):
         self.__base_directory = ''
         self.__subreddit = 'deepfakes'
         self.__reddit = None
-        self.__oldestdate = arrow.get('2005-06-23', 'YYYY-MM-DD').timestamp
-        self.__newestdate = arrow.now().timestamp
+        self.__oldestdate = int(arrow.get('2005-06-23', 'YYYY-MM-DD').timestamp())
+        self.__newestdate = int(arrow.now().timestamp())
         self.__rsub = True
         self.__rcom = True
         self.__extract = False
@@ -209,7 +209,7 @@ def reddit_submission_update(appcfg, update_length=604800):
                 return
             with appcfg.database.atomic():
                 for rdsub in rd_submissions:
-                    updatedtime = arrow.now().timestamp
+                    updatedtime = int(arrow.now().timestamp())
                     if rdsub.author is None and rdsub.selftext == '[deleted]':
                         Submission.update(score=rdsub.score, retrieved_on=updatedtime, deleted=True).where(
                             Submission.link_id == rdsub.id).execute()
@@ -251,7 +251,7 @@ def reddit_comment_update(appcfg, update_length=604800):
                 return
             with appcfg.database.atomic():
                 for rdcomment in rd_comments:
-                    updatedtime = arrow.now().timestamp
+                    updatedtime = int(arrow.now().timestamp())
                     if rdcomment.author is None and rdcomment.body == '[deleted]':
                         Comment.update(score=rdcomment.score,
                                        retrieved_on=updatedtime,
@@ -385,7 +385,7 @@ def get_push_submissions(appcfg, newestdate, oldestdate):
                             continue
                         except KeyError:
                             # print("Type Error when querying", submission.link_id)
-                            submission.retrieved_on = arrow.now().timestamp
+                            submission.retrieved_on = int(arrow.now().timestamp())
                             submission.score = insertdict['score']
                             submission.save()
                             continue
@@ -594,7 +594,7 @@ def process_submissions(appcfg):
         return old_post_id_set
 
     post_id_set |= old_post_id_set
-    filedate = arrow.now().timestamp
+    filedate = int(arrow.now().timestamp())
     basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
     output_file_path = "{basedir}/{subreddit}_{timestamp}.csv".format(basedir=basedir, subreddit=appcfg.subreddit, timestamp=filedate)
 
@@ -652,7 +652,7 @@ def process_comments(appcfg):
         # quit()
         return old_comment_id_set
     comment_id_set |= old_comment_id_set
-    filedate = arrow.now().timestamp
+    filedate = int(arrow.now().timestamp())
     basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
     coutput_file_path = "{basedir}/{subreddit}_comments_{timestamp}.txt".format(basedir=basedir, subreddit=appcfg.subreddit, timestamp=filedate)
 
