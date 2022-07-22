@@ -177,7 +177,7 @@ if bulk_ids:
             pid = pid.rstrip()
             id_list.append(pid.rstrip())
     for post_id in id_list:
-        filedate = arrow.now().timestamp
+        filedate = int(arrow.now().timestamp())
         basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
         output_file_path = "{basedir}/{post_id}_{timestamp}.html".format(basedir=basedir, post_id=post_id, timestamp=filedate)
         try:
@@ -189,7 +189,7 @@ if bulk_ids:
         except HTTPError:
             print('Unable to Archive Post: Invalid PostID or Log In Required (see line 157 of script)')
 else:
-    filedate = arrow.now().timestamp
+    filedate = int(arrow.now().timestamp())
     basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
     output_file_path = "{basedir}/{post_id}_{timestamp}.html".format(basedir=basedir, post_id=post_id, timestamp=filedate)
 

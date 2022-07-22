@@ -91,7 +91,7 @@ def get_reddit_submissions(redditsub):
 
 def get_push_submissions(redditsub):
     push_post_id_set = set()
-    now = arrow.utcnow().timestamp
+    now = int(arrow.utcnow().timestamp())
     linktemplate = "https://api.pushshift.io/reddit/search/submission/?subreddit={subreddit}" \
                    "&before={timestamp}&sort=desc&size=500"
     url = linktemplate.format(subreddit=redditsub, timestamp=now)
@@ -125,7 +125,7 @@ def main():
     post_id_set = reddit_post_id_set.union(push_post_id_set)
     print("Total posts submitted to", subreddit, "in set:", len(post_id_set))
 
-    filedate = arrow.now().timestamp
+    filedate = int(arrow.now().timestamp())
     basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
     output_file_path = "{basedir}/{subreddit}_{timestamp}.csv".format(basedir=basedir, subreddit=subreddit, timestamp=filedate)
 

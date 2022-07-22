@@ -67,7 +67,7 @@ def process_comment_urls(udb, ulimit=100000, number_of_processes=4):
                 task_queue.put('STOP')
     """
     print('Writing new database file')
-    now = arrow.now().timestamp
+    now = int(arrow.now().timestamp())
     basedir = "/rpa" if os.environ.get('DOCKER', '0') == '1' else '.'
     newdbname = "{basedir}/{s}_{t}.db".format(basedir=basedir, s=subred, t=now)
     filecon = Connection(newdbname)
