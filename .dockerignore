@@ -1,0 +1,7 @@
+**
+
+!css
+!credentials.yml
+!*.py
+!requirements.txt
+!docker-entrypoint.sh

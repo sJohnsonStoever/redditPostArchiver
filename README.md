@@ -4,26 +4,78 @@
 
 **a script written in Python**
 
-**Dependencies:** Either
+**Dependencies:**
+    [PRAW](https://github.com/praw-dev/praw),
+    [requests](http://docs.python-requests.org/en/master/),
+    [pyyaml](https://github.com/yaml/pyyaml),
+    [arrow](http://arrow.readthedocs.io/en/latest/),
+    Python 3
 
- * [PRAW](https://github.com/praw-dev/praw), [snudown](https://github.com/reddit/snudown), Python 2.7 (Python 3.x not supported in official snudown branch)
- * [PRAW](https://github.com/praw-dev/praw), [Chid's snudown fork](https://github.com/chid/snudown), Python 3
+**Additional dependencies for subreddit.py:**
+    [apsw](https://rogerbinns.github.io/apsw/),
+    [peewee](http://docs.peewee-orm.com/en/latest/index.html),
+    [urlextract](https://github.com/lipoja/URLExtract),
+    [tqdm](https://pypi.python.org/pypi/tqdm),
+
 
 ## Quick Start ##
 
-As a regular user, install praw:
+As a regular user, install ([preferably without sudo](https://askubuntu.com/a/802594)):
 
-    sudo pip install praw  
+    pip3 install --user requests praw pyyaml arrow
 
-Snudown was recently removed from the pip database, it seems, so to install snudown:
+If you want to run the subreddit database script, you must also install apsw, peewee, urlextract, and tqdm:
+For those running windows, grab APSW from [Christoph Gohlke's page](https://www.lfd.uci.edu/~gohlke/pythonlibs/#apsw) as it may not install from pip.  You may also have to [grab Peewee from the same page](https://www.lfd.uci.edu/~gohlke/pythonlibs/#peewee) if it doesn't install from pip. I recommend installing the newest version of URLExtract directly from the developers GitHub to avoid an error with url processing.
 
-    git clone https://github.com/reddit/snudown.git
-    cd snudown
-    sudo python setup.py install
+    pip3 install --user apsw peewee tqdm
+    pip3 install --user git+https://github.com/lipoja/URLExtract.git
 
-Navigate to the folder with archive.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `./archiver 15zmjl`).
+Visit the PRAW documentation and follow the instructions for a script installation:
 
-As of now, only posts and the associated comment threads can be archived. Saving a specific comment thread, starting with a comment, will be supported in the future. 
+https://praw.readthedocs.io/en/latest/getting_started/authentication.html
+
+In short, you need to register a new app with Reddit:
+
+https://www.reddit.com/prefs/apps/
+
+and grab your client ID and client secret from the app page:
+
+![client ID under the blue PRAW OAuth2 Test logo on the top left, client secret beside 'secret', and add a redirect uri at the bottom, which isn't used but still required](https://raw.githubusercontent.com/pl77/redditPostArchiver/master/CreateApp.png "client ID under the blue PRAW OAuth2 Test logo on the top left, client secret beside 'secret', and add a redirect uri at the bottom, which isn't used but still required")
+
+Edit the included "credentials.yml" file to replace "test" with the variables from your reddit account.
+
+#### archiver.py ####
+
+Navigate to the folder with archiver.py and run the script. An html file will be written into that same folder. To choose what post is to be archived simply provide the post ID as an argument to the script (e.g., `python archiver.py 15zmjl`).
+If you've used the 'postids.py' program below and generated a text file of reddit submission ids, you can bulk process them with the command `python archiver.py -i <filename>`, i.e. `python archiver.py -i GallowBoob_1517981182.txt`).
+
+The output is a webpage that looks like this:
+
+![screenshot of the saved thread](https://raw.githubusercontent.com/pl77/redditPostArchiver/master/savedthread.png "screenshot of the saved thread")
+
+#### postids.py ####
+
+Navigate to the folder with postids.py and run the script. A text file will be written into that same folder. To choose which author is to be archived simply provide the author's name (username) as an argument: `python postids.py GallowBoob`
+The script should be able to handle usernames alone, or if you paste a url that ends in their name.
+
+#### subpostids.py ####
+
+Navigate to the folder with subpostids.py and run the script. A CSV file will be written into that same folder. To choose which subreddit is to be archived simply provide the subreddit name as an argument:`python subpostids.py opendirectories`
+
+#### subreddit.py ####
+
+NEW!!! Run `subreddit.py <subredditname>` and it will grab every submission and comment from that subreddit and store it in a sqlite database. Furthermore, it will then parse all of the text in the comment bodies for a possible URL. if you rerun the script, it will avoid redownloading any comments or scripts so you can keep it updated.
+
+### Quickly get started with the redditPostArchiver Docker image
+
+You can run scripts by specifying the script name (with or without `.py`) and arguments. All output files will be at `/rpa` in the container. The credentials are passed through the environment variables `CLIENT_ID` and `CLIENT_SECRET`.
+
+#### Running Example
+
+`docker run -it --rm -e CLIENT_ID=YOUR_CLIENT_ID -e CLIENT_SECRET=YOUR_CLIENT_SECRET -v $(pwd)/rpa:/rpa yardenshoham/reddit-post-archiver postids GallowBoob`
+
+When it is done running, the `.txt` file will be in `$(pwd)/rpa`.
+
 
 ## Motivation ##
 
